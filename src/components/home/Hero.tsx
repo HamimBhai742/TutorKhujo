@@ -10,25 +10,25 @@ export default function Hero() {
           {/* Left Content Column */}
           <div className="lg:col-span-6 flex flex-col space-y-6 md:space-y-8">
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight animate-fade-in-up">
                 Find the right tutor,{" "}
                 <span className="text-[#0F5B47] dark:text-[#188c6e] relative">
                   easily.
                 </span>
               </h1>
-              <p className="text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-xl leading-relaxed">
+              <p className="text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-xl leading-relaxed animate-fade-in-up delay-100">
                 Connecting guardians with verified tutors across Bangladesh for
                 personalized home and online learning.
               </p>
             </div>
 
             {/* Search Form Container */}
-            <div className="w-full max-w-2xl">
+            <div className="w-full max-w-2xl animate-fade-in-up delay-200">
               <SearchForm />
             </div>
 
             {/* Social Proof / Avatars */}
-            <div className="flex items-center space-x-3 pt-2">
+            <div className="flex items-center space-x-3 pt-2 animate-fade-in-up delay-300">
               <div className="flex -space-x-3 overflow-hidden">
                 {/* Styled CSS avatars for tutors */}
                 <div className="inline-block h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-teal-600 flex items-center justify-center text-white text-xs font-bold font-sans">
@@ -52,7 +52,7 @@ export default function Hero() {
           </div>
 
           {/* Right Image/Illustration Column */}
-          <div className="lg:col-span-6 flex justify-center">
+          <div className="lg:col-span-6 flex justify-center animate-float">
             <div className="relative w-full max-w-lg md:max-w-xl aspect-[1.2] rounded-3xl overflow-hidden shadow-xl border border-zinc-100 dark:border-zinc-800">
               <Image
                 src="/images/hero-tutor.png"
