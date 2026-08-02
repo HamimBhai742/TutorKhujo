@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Globe, Menu, X } from "lucide-react";
+import { Globe, Menu, X, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const navLinks = [
     { label: "How it works", href: "#how-it-works" },
@@ -44,6 +46,16 @@ export default function Navbar() {
 
           {/* Right: Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-6">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-zinc-500 hover:text-[#0F5B47] dark:text-zinc-400 dark:hover:text-[#188c6e] p-1.5 rounded-full hover:bg-zinc-50 dark:hover:bg-zinc-950/40 transition-colors cursor-pointer"
+              aria-label="Toggle theme"
+            >
+              <Sun className="w-5 h-5 hidden dark:block" />
+              <Moon className="w-5 h-5 block dark:hidden" />
+            </button>
+
             {/* Language Switcher */}
             <button
               className="text-zinc-500 hover:text-[#0F5B47] dark:text-zinc-400 dark:hover:text-[#188c6e] p-1.5 rounded-full hover:bg-zinc-50 dark:hover:bg-zinc-950/40 transition-colors cursor-pointer"
@@ -71,6 +83,16 @@ export default function Navbar() {
 
           {/* Mobile Menu Toggle Button */}
           <div className="flex items-center space-x-4 lg:hidden">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-zinc-500 dark:text-zinc-400 p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950/40 rounded-full transition-colors cursor-pointer"
+              aria-label="Toggle theme"
+            >
+              <Sun className="w-5 h-5 hidden dark:block" />
+              <Moon className="w-5 h-5 block dark:hidden" />
+            </button>
+
             <button
               className="text-zinc-500 dark:text-zinc-400 p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-950/40 rounded-full transition-colors cursor-pointer"
               aria-label="Language switcher"
