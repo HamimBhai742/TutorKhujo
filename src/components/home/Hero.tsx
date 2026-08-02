@@ -31,13 +31,13 @@ export default function Hero() {
             <div className="flex items-center space-x-3 pt-2 animate-fade-in-up delay-300">
               <div className="flex -space-x-3 overflow-hidden">
                 {/* Styled CSS avatars for tutors */}
-                <div className="inline-block h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-teal-600 flex items-center justify-center text-white text-xs font-bold font-sans">
+                <div className="inline-flex h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-teal-600 items-center justify-center text-white text-xs font-bold font-sans">
                   M
                 </div>
-                <div className="inline-block h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-orange-500 flex items-center justify-center text-white text-xs font-bold font-sans">
+                <div className="inline-flex h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-orange-500 items-center justify-center text-white text-xs font-bold font-sans">
                   S
                 </div>
-                <div className="inline-block h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-indigo-600 flex items-center justify-center text-white text-xs font-bold font-sans">
+                <div className="inline-flex h-9 w-9 rounded-full ring-2 ring-white dark:ring-black bg-indigo-600 items-center justify-center text-white text-xs font-bold font-sans">
                   A
                 </div>
               </div>
