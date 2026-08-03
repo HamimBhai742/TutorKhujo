@@ -295,7 +295,7 @@ export default function TutorOnboardingClient() {
         <aside className="lg:w-64 shrink-0 flex flex-col justify-between bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6 h-fit sticky lg:top-24">
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Onboarding</h2>
+              <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Complete Profile</h2>
               <p className="text-xs text-zinc-550 dark:text-zinc-400 mt-1 font-medium">Step {activeStep} of 4</p>
             </div>
 
