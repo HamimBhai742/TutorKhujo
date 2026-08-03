@@ -21,7 +21,8 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-900 transition-colors duration-200">
+    <>
+      <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-900 transition-colors duration-200">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Left: Logo and Nav Links */}
@@ -77,7 +78,7 @@ export default function Navbar() {
                   <div className="w-9 h-9 rounded-full bg-[#0F5B47] text-white font-extrabold text-sm flex items-center justify-center border border-zinc-200 dark:border-zinc-800">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-205 hover:text-[#0F5B47] dark:hover:text-[#188c6e] hidden xl:inline">
+                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:text-[#0F5B47] dark:hover:text-[#188c6e] hidden xl:inline">
                     {user.name.split(" ")[0]}
                   </span>
                 </button>
@@ -232,24 +233,25 @@ export default function Navbar() {
           </div>
         )}
       </div>
+      </header>
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/80 rounded-3xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4 hover:scale-[1.01] transition-transform duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/85 rounded-3xl shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4 hover:scale-[1.01] transition-transform duration-200">
             <div className="flex items-center space-x-3 text-red-600">
               <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-xl">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Confirm Logout</h3>
             </div>
-            <p className="text-sm text-zinc-505 dark:text-zinc-400">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Are you sure you want to log out from your TutorKhujo account?
             </p>
             <div className="flex justify-end space-x-3 pt-2">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-xs md:text-sm rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
+                className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-xs md:text-sm rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -268,6 +270,6 @@ export default function Navbar() {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
