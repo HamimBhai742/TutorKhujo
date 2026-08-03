@@ -5,7 +5,7 @@ export default function CTABanner() {
   return (
     <section className="py-12 md:py-16 bg-white dark:bg-black">
       <div className="container mx-auto px-4 max-w-7xl">
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0F5B47] to-[#0A3D2F] dark:from-[#0b4234] dark:to-[#052119] rounded-3xl p-8 md:p-12 lg:p-16 text-center text-white shadow-xl">
+        <div className="relative overflow-hidden bg-linear-to-br from-[#0F5B47] to-[#0A3D2F] dark:from-[#0b4234] dark:to-[#052119] rounded-3xl p-8 md:p-12 lg:p-16 text-center text-white shadow-xl">
           {/* Subtle background decorative shapes */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
