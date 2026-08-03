@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
+import api from "@/lib/api";
 import {
   Mail,
   Lock,
@@ -20,23 +21,26 @@ export default function LoginClient() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
     
-    // Mock user login
-    login("mock-token-12345", {
-      id: "1",
-      name: "Basione Admin",
-      email,
-      role: "admin",
-    });
-    
-    // Redirect to dashboard
-    window.location.href = ROUTES.DASHBOARD.HOME;
+    setError("");
+    try {
+      const response = await api.post("/auth/login", { email, password });
+      const { accessToken, user } = response.data.data;
+      
+      login(accessToken, user);
+      
+      // Redirect to dashboard
+      window.location.href = ROUTES.DASHBOARD.HOME;
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Invalid credentials. Please try again.";
+      setError(errMsg);
+    }
   };
 
   // Google Continue handler

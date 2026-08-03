@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
+import api from "@/lib/api";
 import {
   Globe,
   GraduationCap,
@@ -62,13 +63,20 @@ export default function SignupClient() {
     return () => clearInterval(interval);
   }, [step, isResendActive]);
 
-  const resetOtpTimer = () => {
-    setOtpTimer(59);
-    setIsResendActive(false);
-    setOtp(Array(6).fill(""));
-    setTimeout(() => {
-      otpRefs.current[0]?.focus();
-    }, 50);
+  const resetOtpTimer = async () => {
+    setError("");
+    try {
+      await api.post("/auth/resend-otp", { email });
+      setOtpTimer(59);
+      setIsResendActive(false);
+      setOtp(Array(6).fill(""));
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 50);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Failed to resend OTP. Please try again.";
+      setError(errMsg);
+    }
   };
 
   // Handlers
@@ -80,16 +88,22 @@ export default function SignupClient() {
     setStep(2);
   };
 
-  const handleStep2Submit = (e: React.FormEvent) => {
+  const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password || !mobile) {
       setError("Please fill in all fields");
       return;
     }
     setError("");
-    setStep(3);
-    setOtpTimer(59);
-    setIsResendActive(false);
+    try {
+      await api.post("/auth/register", { name, email, password, mobile, role });
+      setStep(3);
+      setOtpTimer(59);
+      setIsResendActive(false);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Registration failed. Please try again.";
+      setError(errMsg);
+    }
   };
 
   const handleOtpChange = (element: HTMLInputElement, index: number) => {
@@ -121,7 +135,7 @@ export default function SignupClient() {
     }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpCode = otp.join("");
     if (otpCode.length < 6) {
@@ -129,16 +143,19 @@ export default function SignupClient() {
       return;
     }
 
-    // Mock verification & signup
-    login("mock-token-token", {
-      id: Math.random().toString(),
-      name,
-      email,
-      role,
-    });
-    
-    // Redirect to dashboard
-    window.location.href = ROUTES.DASHBOARD.HOME;
+    setError("");
+    try {
+      const response = await api.post("/auth/verify-otp", { email, otpCode });
+      const { accessToken, user } = response.data.data;
+      
+      login(accessToken, user);
+      
+      // Redirect to dashboard
+      window.location.href = ROUTES.DASHBOARD.HOME;
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Invalid OTP code. Please try again.";
+      setError(errMsg);
+    }
   };
 
   // Google Sign up handler
