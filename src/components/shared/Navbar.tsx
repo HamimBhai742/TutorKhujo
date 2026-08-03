@@ -103,7 +103,7 @@ export default function Navbar() {
                           onClick={() => setDropdownOpen(false)}
                           className="block px-4 py-2 text-sm font-bold text-[#F26A1B] hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors"
                         >
-                          Setup/Edit Profile
+                          Profile
                         </Link>
                       )}
                       <Link
