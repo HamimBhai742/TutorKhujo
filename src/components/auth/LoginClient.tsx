@@ -22,6 +22,7 @@ export default function LoginClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [formErrors, setFormErrors] = useState<{ email?: string; password?: string }>({});
 
   const {
     error: googleError,
@@ -37,11 +38,29 @@ export default function LoginClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please fill in all fields");
+    const errors: { email?: string; password?: string } = {};
+
+    // Validate email
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.email = "Please enter a valid email address";
+      }
+    }
+
+    // Validate password
+    if (!password) {
+      errors.password = "Password is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
-    
+
+    setFormErrors({});
     setError("");
     try {
       const response = await api.post("/auth/login", { email, password });
@@ -102,7 +121,7 @@ export default function LoginClient() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               
               {/* Email Address */}
               <div className="space-y-1">
@@ -115,13 +134,26 @@ export default function LoginClient() {
                   </span>
                   <input
                     type="email"
-                    required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (formErrors.email) {
+                        setFormErrors((prev) => ({ ...prev, email: undefined }));
+                      }
+                    }}
                     placeholder="example@tutor.com"
-                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+                    className={`w-full pl-11 pr-4 py-3.5 rounded-xl border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 text-xs md:text-sm ${
+                      formErrors.email
+                        ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                        : "border-zinc-200 dark:border-zinc-800 focus:ring-[#0F5B47]"
+                    }`}
                   />
                 </div>
+                {formErrors.email && (
+                  <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                    {formErrors.email}
+                  </p>
+                )}
               </div>
 
               {/* Password */}
@@ -143,13 +175,26 @@ export default function LoginClient() {
                   </span>
                   <input
                     type="password"
-                    required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (formErrors.password) {
+                        setFormErrors((prev) => ({ ...prev, password: undefined }));
+                      }
+                    }}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+                    className={`w-full pl-11 pr-4 py-3.5 rounded-xl border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 text-xs md:text-sm ${
+                      formErrors.password
+                        ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                        : "border-zinc-200 dark:border-zinc-800 focus:ring-[#0F5B47]"
+                    }`}
                   />
                 </div>
+                {formErrors.password && (
+                  <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                    {formErrors.password}
+                  </p>
+                )}
               </div>
 
               {/* Log In Button */}

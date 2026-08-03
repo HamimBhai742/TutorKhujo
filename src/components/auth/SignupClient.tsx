@@ -41,6 +41,12 @@ export default function SignupClient() {
   const [mobile, setMobile] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    mobile?: string;
+  }>({});
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [otpTimer, setOtpTimer] = useState(59);
   const [isResendActive, setIsResendActive] = useState(false);
@@ -104,13 +110,67 @@ export default function SignupClient() {
 
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password || !mobile) {
-      setError("Please fill in all fields");
+    const errors: { name?: string; email?: string; password?: string; mobile?: string } = {};
+
+    // Validate Name
+    if (!name.trim()) {
+      errors.name = "Full name is required";
+    }
+
+    // Validate Email
+    if (!email.trim()) {
+      errors.email = "Email address is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.email = "Please enter a valid email address";
+      }
+    }
+
+    // Validate Password
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    // Validate Mobile
+    let formattedMobile = "";
+    if (!mobile.trim()) {
+      errors.mobile = "Mobile number is required";
+    } else {
+      // Strip all non-digit characters
+      const cleanNum = mobile.replace(/\D/g, "");
+      let localNum = cleanNum;
+      
+      // If starts with country code, strip it
+      if (localNum.startsWith("880")) {
+        localNum = localNum.substring(3);
+      } else if (localNum.startsWith("+880")) {
+        localNum = localNum.substring(4);
+      }
+
+      const regex11 = /^01[3-9]\d{8}$/;
+      const regex10 = /^1[3-9]\d{8}$/;
+
+      if (regex11.test(localNum)) {
+        formattedMobile = localNum.substring(1);
+      } else if (regex10.test(localNum)) {
+        formattedMobile = localNum;
+      } else {
+        errors.mobile = "Please enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX or 17XXXXXXXX)";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+
+    setFormErrors({});
     setError("");
     try {
-      await api.post("/auth/register", { name, email, password, mobile, role });
+      await api.post("/auth/register", { name, email, password, mobile: formattedMobile, role });
       setStep(3);
       setOtpTimer(59);
       setIsResendActive(false);
@@ -164,8 +224,12 @@ export default function SignupClient() {
       
       login(accessToken, user);
       
-      // Redirect to home page
-      window.location.href = ROUTES.HOME;
+      // Redirect to onboarding if tutor, otherwise to home page
+      if (user?.role === "tutor") {
+        window.location.href = "/tutor-onboarding";
+      } else {
+        window.location.href = ROUTES.HOME;
+      }
     } catch (err: any) {
       const errMsg = err.response?.data?.message || "Invalid OTP code. Please try again.";
       setError(errMsg);
@@ -467,9 +531,8 @@ export default function SignupClient() {
                 </span>
                 <div className="grow border-t border-zinc-200 dark:border-zinc-800"></div>
               </div>
-
               {/* Form fields */}
-              <form onSubmit={handleStep2Submit} className="space-y-4">
+              <form onSubmit={handleStep2Submit} noValidate className="space-y-4">
                 {activeError && (
                   <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 text-xs md:text-sm font-semibold">
                     {activeError}
@@ -483,12 +546,25 @@ export default function SignupClient() {
                   </label>
                   <input
                     type="text"
-                    required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (formErrors.name) {
+                        setFormErrors((prev) => ({ ...prev, name: undefined }));
+                      }
+                    }}
                     placeholder="Enter your name"
-                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+                    className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 text-xs md:text-sm ${
+                      formErrors.name
+                        ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                        : "border-zinc-200 dark:border-zinc-800 focus:ring-[#0F5B47]"
+                    }`}
                   />
+                  {formErrors.name && (
+                    <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                      {formErrors.name}
+                    </p>
+                  )}
                 </div>
 
                 {/* Email */}
@@ -498,12 +574,25 @@ export default function SignupClient() {
                   </label>
                   <input
                     type="email"
-                    required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (formErrors.email) {
+                        setFormErrors((prev) => ({ ...prev, email: undefined }));
+                      }
+                    }}
                     placeholder="name@example.com"
-                    className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-805 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+                    className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 text-xs md:text-sm ${
+                      formErrors.email
+                        ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                        : "border-zinc-200 dark:border-zinc-800 focus:ring-[#0F5B47]"
+                    }`}
                   />
+                  {formErrors.email && (
+                    <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                      {formErrors.email}
+                    </p>
+                  )}
                 </div>
 
                 {/* Password */}
@@ -514,11 +603,19 @@ export default function SignupClient() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
-                      required
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (formErrors.password) {
+                          setFormErrors((prev) => ({ ...prev, password: undefined }));
+                        }
+                      }}
                       placeholder="Create a password"
-                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] pr-10 text-xs md:text-sm"
+                      className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 pr-10 text-xs md:text-sm ${
+                        formErrors.password
+                          ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                          : "border-zinc-200 dark:border-zinc-800 focus:ring-[#0F5B47]"
+                      }`}
                     />
                     <button
                       type="button"
@@ -528,6 +625,11 @@ export default function SignupClient() {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {formErrors.password && (
+                    <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                      {formErrors.password}
+                    </p>
+                  )}
                 </div>
 
                 {/* Mobile */}
@@ -535,22 +637,35 @@ export default function SignupClient() {
                   <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-wider uppercase">
                     Mobile Number
                   </label>
-                  <div className="flex rounded-xl overflow-hidden border border-zinc-205 dark:border-zinc-800">
-                    <div className="bg-zinc-100 dark:bg-zinc-800 px-4 py-3 text-zinc-600 dark:text-zinc-300 text-xs md:text-sm font-semibold flex items-center border-r border-zinc-202 dark:border-zinc-800">
+                  <div className={`flex rounded-xl overflow-hidden border transition-all ${
+                    formErrors.mobile
+                      ? "border-red-500 dark:border-red-500 ring-2 ring-red-500"
+                      : "border-zinc-200 dark:border-zinc-800 focus-within:ring-2 focus-within:ring-[#0F5B47]"
+                  }`}>
+                    <div className="bg-zinc-100 dark:bg-zinc-800 px-4 py-3 text-zinc-600 dark:text-zinc-300 text-xs md:text-sm font-semibold flex items-center border-r border-zinc-200 dark:border-zinc-800">
                       +880
                     </div>
                     <input
                       type="tel"
-                      required
                       value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
+                      onChange={(e) => {
+                        setMobile(e.target.value);
+                        if (formErrors.mobile) {
+                          setFormErrors((prev) => ({ ...prev, mobile: undefined }));
+                        }
+                      }}
                       placeholder="1XXX-XXXXXX"
-                      className="flex-1 px-4 py-3 bg-white dark:bg-zinc-955 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#0F5B47] text-xs md:text-sm"
+                      className="flex-1 px-4 py-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none text-xs md:text-sm"
                     />
                   </div>
+                  {formErrors.mobile && (
+                    <p className="text-[11px] text-red-500 font-semibold pl-1 mt-1">
+                      {formErrors.mobile}
+                    </p>
+                  )}
                 </div>
 
-                <p className="text-[10px] text-zinc-404 dark:text-zinc-500 italic">
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 italic">
                   * A 4-digit OTP will be sent for email and phone verification.
                 </p>
 

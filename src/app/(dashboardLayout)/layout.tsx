@@ -14,7 +14,8 @@ import {
   LogOut, 
   Sun, 
   Moon, 
-  User 
+  User,
+  Sliders
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
@@ -89,6 +90,15 @@ export default function DashboardLayout({
 
         {/* Sidebar Footer */}
         <div className="border-t border-zinc-100 p-4 dark:border-zinc-800">
+          {user?.role === "tutor" && (
+            <Link
+              href="/tutor-onboarding"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F26A1B]/10 hover:bg-[#F26A1B]/20 text-[#F26A1B] px-4 py-2.5 text-xs font-bold transition-all mb-3 text-center"
+            >
+              <Sliders size={14} />
+              <span>Update Tutor Profile</span>
+            </Link>
+          )}
           <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/50 mb-3">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
