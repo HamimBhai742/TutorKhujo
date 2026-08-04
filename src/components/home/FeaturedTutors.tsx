@@ -10,7 +10,7 @@ export default function FeaturedTutors() {
   const tutors = MOCK_TUTORS.slice(0, 3);
 
   return (
-    <section className="py-20 md:py-28 bg-zinc-50/50 dark:bg-zinc-950/20 transition-colors duration-300">
+    <section className="py-12 md:py-28 bg-zinc-50/50 dark:bg-zinc-950/20 transition-colors duration-300">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Title */}
         <div className="flex flex-col items-center text-center mb-16 md:mb-20">

@@ -40,7 +40,7 @@ export default function FAQ() {
   };
 
   return (
-    <section className="py-20 md:py-28 bg-white dark:bg-black transition-colors duration-300">
+    <section className="py-12 md:py-28 bg-white dark:bg-black transition-colors duration-300">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Title */}
         <div className="flex flex-col items-center text-center mb-16 md:mb-20">

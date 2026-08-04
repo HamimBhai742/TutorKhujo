@@ -41,7 +41,7 @@ export default function WhyChooseUs() {
   ];
 
   return (
-    <section className="py-20 md:py-28 bg-blue-50/30 dark:bg-zinc-950/10 transition-colors duration-300">
+    <section className="py-12 md:py-28 bg-blue-50/30 dark:bg-zinc-950/10 transition-colors duration-300">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Title with teal underline */}
         <div className="flex flex-col items-center text-center mb-16 md:mb-20">

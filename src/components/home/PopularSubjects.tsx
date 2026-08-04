@@ -18,7 +18,7 @@ export default function PopularSubjects() {
   ];
 
   return (
-    <section className="py-20 bg-white dark:bg-black transition-colors duration-300">
+    <section className="py-12 md:py-20 bg-white dark:bg-black transition-colors duration-300">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Header containing title and 'View all' link */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">

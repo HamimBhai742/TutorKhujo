@@ -4,6 +4,7 @@ import Stats from "@/components/home/Stats";
 import HowItWorks from "@/components/home/HowItWorks";
 import PopularSubjects from "@/components/home/PopularSubjects";
 import FeaturedTutors from "@/components/home/FeaturedTutors";
+import LatestTuitions from "@/components/home/LatestTuitions";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
 import FAQ from "@/components/home/FAQ";
 import CTABanner from "@/components/home/CTABanner";
@@ -17,6 +18,12 @@ export default function Home() {
       {/* Platform Trust Stats */}
       <Stats />
 
+      {/* Featured Verified Tutors */}
+      <FeaturedTutors />
+
+      {/* Latest Tuition Jobs */}
+      <LatestTuitions />
+
       {/* How It Works Section */}
       <div id="how-it-works">
         <HowItWorks />
@@ -24,9 +31,6 @@ export default function Home() {
 
       {/* Popular Subjects Section */}
       <PopularSubjects />
-
-      {/* Featured Verified Tutors */}
-      <FeaturedTutors />
 
       {/* Why Choose TutorKhujo Section */}
       <WhyChooseUs />
