@@ -203,6 +203,15 @@ export default function Navbar() {
                       <p className="text-xs text-zinc-400 dark:text-zinc-500">{user.email}</p>
                     </div>
                   </div>
+                  {user.role === "tutor" && (
+                    <Link
+                      href="/tutor-onboarding"
+                      onClick={() => setIsOpen(false)}
+                      className="w-full text-center py-2.5 text-sm font-bold text-[#F26A1B] hover:bg-orange-50 dark:hover:bg-orange-950/20 rounded-xl transition-colors"
+                    >
+                      Profile
+                    </Link>
+                  )}
                   <Link
                     href="/dashboard"
                     onClick={() => setIsOpen(false)}

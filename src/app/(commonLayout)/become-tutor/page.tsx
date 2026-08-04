@@ -266,7 +266,7 @@ export default function BecomeTutorPage() {
                   </div>
 
                   {/* Layered floating element: Badge */}
-                  <div className="absolute -bottom-6 -left-6 bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800/80 p-4 rounded-2xl shadow-xl flex items-center gap-3 z-20 hover:scale-105 transition-transform duration-300">
+                  <div className="absolute -bottom-6 left-2 sm:-left-6 bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800/80 p-4 rounded-2xl shadow-xl flex items-center gap-3 z-20 hover:scale-105 transition-transform duration-300">
                     <div className="p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-500 rounded-xl">
                       <Star className="w-5 h-5 fill-amber-500 text-amber-500 animate-spin-slow" />
                     </div>
@@ -281,7 +281,7 @@ export default function BecomeTutorPage() {
                   </div>
 
                   {/* Layered floating element: Shield */}
-                  <div className="absolute -top-6 -right-6 bg-linear-to-br from-[#0F5B47] to-[#0b4234] text-white p-4 rounded-2xl shadow-xl flex items-center gap-3 z-20 hover:scale-105 transition-transform duration-300">
+                  <div className="absolute -top-6 right-2 sm:-right-6 bg-linear-to-br from-[#0F5B47] to-[#0b4234] text-white p-4 rounded-2xl shadow-xl flex items-center gap-3 z-20 hover:scale-105 transition-transform duration-300">
                     <Shield className="w-6 h-6 text-white/90 shrink-0" />
                     <div>
                       <h4 className="text-xs font-black">
