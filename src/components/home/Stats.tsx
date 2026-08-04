@@ -13,6 +13,7 @@ interface CounterProps {
 function AnimatedCounter({ value, duration = 1500 }: CounterProps) {
   const cleanCommas = value.replace(/,/g, "");
   const numMatch = cleanCommas.match(/[\d.]+/);
+  const numberStr = numMatch ? numMatch[0] : "";
 
   const [displayVal, setDisplayVal] = useState(() => (numMatch ? "0" : value));
   const elementRef = useRef<HTMLSpanElement>(null);
@@ -27,14 +28,15 @@ function AnimatedCounter({ value, duration = 1500 }: CounterProps) {
   }
 
   useEffect(() => {
-    if (!numMatch) {
+    if (!numberStr) {
       return;
     }
 
-    const targetNumber = parseFloat(numMatch[0]);
-    const suffix = value.split(numMatch[0])[1] || "";
-    const prefix = value.split(numMatch[0])[0] || "";
-    const isDecimal = numMatch[0].includes(".");
+    const targetNumber = parseFloat(numberStr);
+    const matchIndex = cleanCommas.indexOf(numberStr);
+    const prefix = cleanCommas.slice(0, matchIndex);
+    const suffix = cleanCommas.slice(matchIndex + numberStr.length);
+    const isDecimal = numberStr.includes(".");
     const hasCommas = value.includes(",");
 
     const observer = new IntersectionObserver(
@@ -88,7 +90,7 @@ function AnimatedCounter({ value, duration = 1500 }: CounterProps) {
         observer.unobserve(currentRef);
       }
     };
-  }, [value, duration, hasAnimated, numMatch]);
+  }, [value, duration, hasAnimated, numberStr, cleanCommas]);
 
   return <span ref={elementRef}>{displayVal}</span>;
 }
