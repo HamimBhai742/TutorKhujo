@@ -14,15 +14,21 @@ import {
   Star,
   Zap,
   Info,
-  CalendarDays
+  CalendarDays,
+  Search,
+  ArrowLeft,
+  Send
 } from "lucide-react";
 import {
   MOCK_REQUESTS,
   MOCK_ACTIVE_TUITIONS,
   MOCK_PAYOUTS,
+  MOCK_CHATS,
   TuitionRequest,
   ActiveTuition,
-  Payout
+  Payout,
+  ChatContact,
+  ChatMessage
 } from "@/data/dashboard";
 
 export default function TutorDashboardClient() {
@@ -34,6 +40,39 @@ export default function TutorDashboardClient() {
   const [requests, setRequests] = useState<TuitionRequest[]>(MOCK_REQUESTS);
   const [activeTuitions, setActiveTuitions] = useState<ActiveTuition[]>(MOCK_ACTIVE_TUITIONS);
   const [payouts] = useState<Payout[]>(MOCK_PAYOUTS);
+  const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
+  const [activeChatId, setActiveChatId] = useState<string>("chat-1");
+  const [newMessageText, setNewMessageText] = useState<string>("");
+  const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
+  const [chatSearch, setChatSearch] = useState<string>("");
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessageText.trim()) return;
+
+    const newMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: "tutor",
+      content: newMessageText.trim(),
+      time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    };
+
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === activeChatId) {
+          return {
+            ...c,
+            lastMessage: newMessageText.trim(),
+            time: "Just Now",
+            messages: [...c.messages, newMsg]
+          };
+        }
+        return c;
+      })
+    );
+
+    setNewMessageText("");
+  };
 
   // Availability matrix state
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -390,6 +429,187 @@ export default function TutorDashboardClient() {
               </div>
             )}
           </div>
+        </div>
+      )}
+      {/* --- PANEL 2.5: MESSAGES --- */}
+      {currentTab === "messages" && (
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs flex h-155 transition-colors duration-300">
+          
+          {/* Left: Chat Contacts List */}
+          <div className={`${
+            chatMobileView === "chat" ? "hidden" : "flex"
+          } md:flex w-full md:w-80 border-r border-zinc-200 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950`}>
+            
+            {/* Search Header */}
+            <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 space-y-3">
+              <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                Conversations
+              </h3>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search students..."
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-800 dark:text-white"
+                />
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            {/* Contacts loop */}
+            <div className="flex-1 overflow-y-auto divide-y divide-zinc-100/50 dark:divide-zinc-900/40">
+              {chats
+                .filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase()))
+                .map((chat) => {
+                  const isActive = chat.id === activeChatId;
+                  return (
+                    <button
+                      key={chat.id}
+                      onClick={() => {
+                        setActiveChatId(chat.id);
+                        setChatMobileView("chat");
+                        setChats((prev) =>
+                          prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
+                        );
+                      }}
+                      className={`w-full text-left p-4 flex gap-3 items-center transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-zinc-50 dark:bg-zinc-900"
+                          : "hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full ${chat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
+                        {chat.studentName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h4 className="text-xs font-black text-zinc-800 dark:text-white truncate">
+                            {chat.studentName}
+                          </h4>
+                          <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-555 shrink-0">
+                            {chat.time}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-500 truncate leading-normal">
+                          {chat.lastMessage}
+                        </p>
+                      </div>
+
+                      {chat.unreadCount > 0 && (
+                        <span className="w-4 h-4 rounded-full bg-[#F26A1B] text-white text-[8px] font-black flex items-center justify-center shrink-0">
+                          {chat.unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              {chats.filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase())).length === 0 && (
+                <div className="text-center py-12 text-zinc-400 text-xs font-semibold">
+                  No conversations found.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Active Chat conversation box */}
+          {(() => {
+            const activeChat = chats.find((c) => c.id === activeChatId);
+            if (!activeChat) {
+              return (
+                <div className="flex-1 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold">
+                  Select a chat conversation to start messaging.
+                </div>
+              );
+            }
+
+            return (
+              <div className={`${
+                chatMobileView === "list" ? "hidden" : "flex"
+              } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
+                
+                {/* Active Chat Header */}
+                <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => setChatMobileView("list")}
+                    className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4 stroke-[3px]" />
+                  </button>
+                  <div className={`w-9 h-9 rounded-full ${activeChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0`}>
+                    {activeChat.studentName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-850 dark:text-white leading-tight">
+                      {activeChat.studentName}
+                    </h4>
+                    <span className="text-[9px] text-[#0F5B47] dark:text-[#188c6e] font-black uppercase tracking-wider block mt-0.5">
+                      Online &bull; Student
+                    </span>
+                  </div>
+                </div>
+
+                {/* Messages logs area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col justify-end">
+                  <div className="space-y-4">
+                    {activeChat.messages.map((msg) => {
+                      const isTutor = msg.sender === "tutor";
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex ${isTutor ? "justify-end" : "justify-start"} items-end gap-2`}
+                        >
+                          {!isTutor && (
+                            <div className={`w-6 h-6 rounded-full ${activeChat.avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-xs mb-1`}>
+                              {activeChat.studentName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="max-w-[70%] space-y-1">
+                            <div
+                              className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${
+                                isTutor
+                                  ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none"
+                                  : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-150/60 dark:border-zinc-850 rounded-bl-none shadow-2xs"
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
+                            <span className={`text-[8px] font-bold text-zinc-400 block ${isTutor ? "text-right" : "text-left"}`}>
+                              {msg.time}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Input Area */}
+                <form
+                  onSubmit={handleSendMessage}
+                  className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+                >
+                  <input
+                    type="text"
+                    placeholder="Write a message..."
+                    value={newMessageText}
+                    onChange={(e) => setNewMessageText(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                    title="Send Message"
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </button>
+                </form>
+
+              </div>
+            );
+          })()}
+
         </div>
       )}
 

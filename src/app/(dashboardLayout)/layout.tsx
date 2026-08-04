@@ -19,7 +19,8 @@ import {
   Inbox,
   BookOpen,
   DollarSign,
-  Calendar
+  Calendar,
+  MessageSquare
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
@@ -34,6 +35,7 @@ function SidebarNavigation() {
     ? [
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
         { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
         { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: DollarSign },
         { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },

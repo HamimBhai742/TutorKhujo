@@ -161,3 +161,66 @@ export const MOCK_PAYOUTS: Payout[] = [
     description: "June Tuition Fee - Zara Tabassum"
   }
 ];
+
+export interface ChatMessage {
+  id: string;
+  sender: "tutor" | "student";
+  content: string;
+  time: string;
+}
+
+export interface ChatContact {
+  id: string;
+  studentName: string;
+  avatarBg: string;
+  lastMessage: string;
+  time: string;
+  unreadCount: number;
+  messages: ChatMessage[];
+}
+
+export const MOCK_CHATS: ChatContact[] = [
+  {
+    id: "chat-1",
+    studentName: "Zara Tabassum",
+    avatarBg: "bg-purple-500",
+    lastMessage: "Sir, next class key offline hobe nki online?",
+    time: "8:30 PM",
+    unreadCount: 1,
+    messages: [
+      { id: "m1", sender: "student", content: "Assalamu Alaikum Sir, chemistry assignment ti ready korechi.", time: "4:00 PM" },
+      { id: "m2", sender: "tutor", content: "Walaikum Assalamu Zara. assignment er photo pathao, ami check kore dicchi.", time: "4:15 PM" },
+      { id: "m3", sender: "student", content: "Sir, details upload korechi drive link a.", time: "5:00 PM" },
+      { id: "m4", sender: "tutor", content: "Ami dekhlam, organic structure clear ache. keep it up.", time: "5:30 PM" },
+      { id: "m5", sender: "student", content: "Sir, next class key offline hobe nki online?", time: "8:30 PM" }
+    ]
+  },
+  {
+    id: "chat-2",
+    studentName: "Sakib Rahman",
+    avatarBg: "bg-blue-500",
+    lastMessage: "Sure Sir, dynamic routing clear built-in chat setup dynamic.",
+    time: "Yesterday",
+    unreadCount: 0,
+    messages: [
+      { id: "m6", sender: "tutor", content: "Sakib, today's math session starts at 5:00 PM.", time: "Yesterday" },
+      { id: "m7", sender: "student", content: "Yes Sir, I am prepared with the formula sheets.", time: "Yesterday" },
+      { id: "m8", sender: "tutor", content: "Good. We will practice trigonometry proofs today.", time: "Yesterday" },
+      { id: "m9", sender: "student", content: "Sure Sir, dynamic routing clear built-in chat setup dynamic.", time: "Yesterday" }
+    ]
+  },
+  {
+    id: "chat-3",
+    studentName: "Fahim Shahriar",
+    avatarBg: "bg-orange-500",
+    lastMessage: "Okay sir, thursday 7 pm a class hobe.",
+    time: "Aug 02",
+    unreadCount: 0,
+    messages: [
+      { id: "m10", sender: "student", content: "Sir, C programming er loop concepts niye problem hocche.", time: "Aug 02" },
+      { id: "m11", sender: "tutor", content: "Worry not Fahim. We will solve 5 examples in the next class.", time: "Aug 02" },
+      { id: "m12", sender: "student", content: "Okay sir, thursday 7 pm a class hobe.", time: "Aug 02" }
+    ]
+  }
+];
+
