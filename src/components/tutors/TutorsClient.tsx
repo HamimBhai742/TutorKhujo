@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Star,
@@ -26,8 +27,17 @@ const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology"];
 const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "SSC", "HSC"];
 
 export default function TutorsClient() {
+  const searchParams = useSearchParams();
+  const subjectQuery = searchParams.get("subject");
+
   // Filters State
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(() => {
+    if (subjectQuery) {
+      const normalized = subjectQuery === "Math" ? "Mathematics" : subjectQuery;
+      return [normalized];
+    }
+    return [];
+  });
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("Dhaka");
   const [maxSalary, setMaxSalary] = useState<number>(15000);
