@@ -168,7 +168,7 @@ export default function AboutClient() {
                 <ScrollReveal key={idx} variant="slide-up" delay={250 + idx * 50}>
                   <a
                     href={info.href}
-                    className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-2xl p-5 flex gap-4 items-start shadow-2xs hover:shadow-sm hover:border-[#0F5B47]/20 dark:hover:border-[#188c6e]/20 transition-all duration-200 block group"
+                    className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-2xl p-5 flex gap-4 items-start shadow-2xs hover:shadow-sm hover:border-[#0F5B47]/20 dark:hover:border-[#188c6e]/20 transition-all duration-200 group"
                   >
                     <div className="p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl shrink-0 group-hover:scale-102 transition-transform duration-200">
                       {info.icon}
