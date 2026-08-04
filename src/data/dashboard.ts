@@ -224,3 +224,132 @@ export const MOCK_CHATS: ChatContact[] = [
   }
 ];
 
+export interface TuitionPost {
+  id: string;
+  classLevel: string;
+  subjects: string[];
+  budget: number;
+  mode: "Home" | "Online" | "Both";
+  frequency: string;
+  location: string;
+  status: "Active" | "Paused" | "Closed";
+  date: string;
+}
+
+export interface TutorApplication {
+  id: string;
+  tutorName: string;
+  institution: string;
+  subject: string;
+  rating: number;
+  salaryBid: number;
+  avatarBg: string;
+  status: "Pending" | "Shortlisted" | "Hired" | "Rejected";
+}
+
+export interface Invoice {
+  id: string;
+  amount: number;
+  status: "Paid" | "Unpaid" | "Overdue";
+  date: string;
+  method: string;
+  description: string;
+  billingMonth: string;
+}
+
+export const MOCK_TUITION_POSTS: TuitionPost[] = [
+  {
+    id: "post-1",
+    classLevel: "Class 10 (SSC)",
+    subjects: ["Mathematics", "Higher Mathematics"],
+    budget: 5000,
+    mode: "Both",
+    frequency: "3 Days / Week",
+    location: "Dhanmondi, Dhaka",
+    status: "Active",
+    date: "Jul 10, 2026"
+  },
+  {
+    id: "post-2",
+    classLevel: "Class 8 (JSC)",
+    subjects: ["English", "General Science"],
+    budget: 4500,
+    mode: "Home",
+    frequency: "3 Days / Week",
+    location: "Dhanmondi, Dhaka",
+    status: "Paused",
+    date: "Jun 15, 2026"
+  }
+];
+
+export const MOCK_TUTOR_APPLICATIONS: TutorApplication[] = [
+  {
+    id: "app-1",
+    tutorName: "Mahmudul Hasan",
+    institution: "BUET",
+    subject: "Mathematics & Physics",
+    rating: 4.8,
+    salaryBid: 5500,
+    avatarBg: "bg-emerald-500",
+    status: "Pending"
+  },
+  {
+    id: "app-2",
+    tutorName: "Anika Tasnim",
+    institution: "Dhaka University",
+    subject: "Higher Mathematics & Statistics",
+    rating: 4.9,
+    salaryBid: 5000,
+    avatarBg: "bg-rose-500",
+    status: "Pending"
+  },
+  {
+    id: "app-3",
+    tutorName: "Tanvir Ahmed",
+    institution: "NSU",
+    subject: "Mathematics",
+    rating: 4.6,
+    salaryBid: 4500,
+    avatarBg: "bg-indigo-500",
+    status: "Pending"
+  }
+];
+
+export const MOCK_INVOICES: Invoice[] = [
+  {
+    id: "inv-1",
+    amount: 5000,
+    status: "Paid",
+    date: "Aug 02, 2026",
+    method: "bKash",
+    description: "Tuition Fee - Sakib Rahman",
+    billingMonth: "July 2026"
+  },
+  {
+    id: "inv-2",
+    amount: 8000,
+    status: "Paid",
+    date: "Aug 01, 2026",
+    method: "Bank Transfer (DBBL)",
+    description: "Tuition Fee - Zara Tabassum",
+    billingMonth: "July 2026"
+  },
+  {
+    id: "inv-3",
+    amount: 5500,
+    status: "Paid",
+    date: "Aug 01, 2026",
+    method: "bKash",
+    description: "Tuition Fee - Fahim Shahriar",
+    billingMonth: "July 2026"
+  },
+  {
+    id: "inv-4",
+    amount: 5000,
+    status: "Paid",
+    date: "Jul 02, 2026",
+    method: "bKash",
+    description: "Tuition Fee - Sakib Rahman",
+    billingMonth: "June 2026"
+  }
+];

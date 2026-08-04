@@ -433,15 +433,15 @@ export default function TutorDashboardClient() {
       )}
       {/* --- PANEL 2.5: MESSAGES --- */}
       {currentTab === "messages" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs flex h-155 transition-colors duration-300">
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs flex h-[70vh] min-h-125 max-h-170 transition-colors duration-300">
           
           {/* Left: Chat Contacts List */}
           <div className={`${
             chatMobileView === "chat" ? "hidden" : "flex"
-          } md:flex w-full md:w-80 border-r border-zinc-200 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950`}>
+          } md:flex w-full md:w-80 border-r border-zinc-150/80 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950`}>
             
             {/* Search Header */}
-            <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 space-y-3">
+            <div className="p-4 border-b border-zinc-150/60 dark:border-zinc-900 space-y-3 shrink-0">
               <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
                 Conversations
               </h3>
@@ -451,7 +451,7 @@ export default function TutorDashboardClient() {
                   placeholder="Search students..."
                   value={chatSearch}
                   onChange={(e) => setChatSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-800 dark:text-white"
+                  className="w-full pl-9 pr-4 py-2 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-800 dark:text-white transition-all duration-200"
                 />
                 <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
@@ -473,10 +473,10 @@ export default function TutorDashboardClient() {
                           prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
                         );
                       }}
-                      className={`w-full text-left p-4 flex gap-3 items-center transition-all cursor-pointer ${
+                      className={`w-full text-left p-4 flex gap-3 items-center transition-all duration-200 border-l-4 cursor-pointer ${
                         isActive
-                          ? "bg-zinc-50 dark:bg-zinc-900"
-                          : "hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30"
+                          ? "bg-[#0F5B47]/5 dark:bg-[#188c6e]/5 border-[#0F5B47] dark:border-[#188c6e]"
+                          : "border-transparent hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30"
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full ${chat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
@@ -497,7 +497,7 @@ export default function TutorDashboardClient() {
                       </div>
 
                       {chat.unreadCount > 0 && (
-                        <span className="w-4 h-4 rounded-full bg-[#F26A1B] text-white text-[8px] font-black flex items-center justify-center shrink-0">
+                        <span className="w-4.5 h-4.5 rounded-full bg-[#F26A1B] text-white text-[8px] font-black flex items-center justify-center shrink-0">
                           {chat.unreadCount}
                         </span>
                       )}
@@ -529,7 +529,7 @@ export default function TutorDashboardClient() {
               } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
                 
                 {/* Active Chat Header */}
-                <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3 shrink-0">
+                <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center gap-3 shrink-0">
                   <button
                     onClick={() => setChatMobileView("list")}
                     className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
@@ -550,26 +550,26 @@ export default function TutorDashboardClient() {
                 </div>
 
                 {/* Messages logs area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col justify-end">
-                  <div className="space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+                  <div className="space-y-4 mt-auto">
                     {activeChat.messages.map((msg) => {
                       const isTutor = msg.sender === "tutor";
                       return (
                         <div
                           key={msg.id}
-                          className={`flex ${isTutor ? "justify-end" : "justify-start"} items-end gap-2`}
+                          className={`flex ${isTutor ? "justify-end" : "justify-start"} items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300`}
                         >
                           {!isTutor && (
                             <div className={`w-6 h-6 rounded-full ${activeChat.avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-xs mb-1`}>
                               {activeChat.studentName.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <div className="max-w-[70%] space-y-1">
+                          <div className="max-w-[75%] space-y-1">
                             <div
-                              className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${
+                              className={`p-3.5 rounded-2xl text-xs font-semibold leading-relaxed ${
                                 isTutor
-                                  ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none"
-                                  : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-150/60 dark:border-zinc-850 rounded-bl-none shadow-2xs"
+                                  ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none shadow-xs"
+                                  : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-none shadow-3xs"
                               }`}
                             >
                               {msg.content}
@@ -587,19 +587,19 @@ export default function TutorDashboardClient() {
                 {/* Bottom Input Area */}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+                  className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
                 >
                   <input
                     type="text"
                     placeholder="Write a message..."
                     value={newMessageText}
                     onChange={(e) => setNewMessageText(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                    className="flex-1 px-4 py-3 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-850 dark:text-white transition-all duration-200"
                     required
                   />
                   <button
                     type="submit"
-                    className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                    className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
                     title="Send Message"
                   >
                     <Send className="w-4 h-4 text-white" />

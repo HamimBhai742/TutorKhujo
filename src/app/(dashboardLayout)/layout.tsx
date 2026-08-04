@@ -20,7 +20,8 @@ import {
   BookOpen,
   DollarSign,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
@@ -39,6 +40,15 @@ function SidebarNavigation() {
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
         { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: DollarSign },
         { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },
+      ]
+    : user?.role === "student"
+    ? [
+        { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
+        { name: "My Tuition Posts", href: "/dashboard?tab=posts", active: currentTab === "posts", icon: FileText },
+        { name: "Tutor Applications", href: "/dashboard?tab=applications", active: currentTab === "applications", icon: Users },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
+        { name: "Active Tutors", href: "/dashboard?tab=active-tutors", active: currentTab === "active-tutors", icon: BookOpen },
+        { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: DollarSign },
       ]
     : [
         { name: "Overview", href: ROUTES.DASHBOARD.HOME, active: pathname === ROUTES.DASHBOARD.HOME && currentTab === "overview", icon: LayoutDashboard },
@@ -186,7 +196,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Dashboard Main Content */}
-        <main className="flex-1 overflow-y-auto p-8 focus:outline-none">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 focus:outline-none">
           {children}
         </main>
       </div>
