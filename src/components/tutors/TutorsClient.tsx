@@ -650,10 +650,10 @@ export default function TutorsClient() {
           </aside>
 
           {/* Results Area */}
-          <section className="col-span-12 lg:col-span-9 flex flex-col space-y-6">
+          <section className="col-span-1 lg:col-span-9 flex flex-col space-y-6">
             
             {/* Toolbar Header */}
-            <div className="flex items-center justify-between bg-white dark:bg-zinc-950 border border-zinc-150/50 dark:border-zinc-900 p-4 rounded-2xl shadow-xs transition-colors duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-zinc-950 border border-zinc-150/50 dark:border-zinc-900 p-4 rounded-2xl shadow-xs transition-colors duration-300 gap-4">
               <div className="space-y-0.5">
                 <h2 className="text-base md:text-lg font-black text-zinc-800 dark:text-zinc-200 tracking-tight">
                   {isFiltering ? (
@@ -669,11 +669,11 @@ export default function TutorsClient() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                 {/* Mobile Drawer Trigger */}
                 <button
                   onClick={() => setIsDrawerOpen(true)}
-                  className="lg:hidden flex items-center gap-2 px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 text-zinc-750 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer"
+                  className="lg:hidden flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex-1 sm:flex-none"
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#0F5B47] dark:text-[#188c6e]" />
                   <span>Filters</span>
@@ -685,11 +685,11 @@ export default function TutorsClient() {
                 </button>
 
                 {/* Sort Option */}
-                <div className="relative">
+                <div className="relative flex-1 sm:flex-none">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="pl-3.5 pr-8 py-2.5 bg-zinc-555 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-750 dark:text-zinc-300 focus:outline-none appearance-none cursor-pointer transition-colors"
+                    className="w-full sm:w-auto pl-3.5 pr-8 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 focus:outline-none appearance-none cursor-pointer transition-colors"
                   >
                     <option value="relevance">Sort by: Relevance</option>
                     <option value="salary-asc">Salary: Low to High</option>
@@ -736,34 +736,34 @@ export default function TutorsClient() {
                     variant="slide-up"
                     delay={idx * 75}
                     duration={600}
-                    className="w-full flex"
+                    className="w-full h-full flex"
                   >
                     <div
-                      className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-2xl p-6 flex flex-col space-y-5 shadow-xs hover:shadow-xl hover:shadow-teal-500/5 hover:-translate-y-1 hover:border-teal-500/20 dark:hover:border-[#188c6e]/30 transition-all duration-350 relative overflow-hidden group w-full cursor-default"
+                      className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-2xl p-6 flex flex-col gap-5 shadow-xs hover:shadow-xl hover:shadow-teal-500/5 hover:-translate-y-1 hover:border-teal-500/20 dark:hover:border-[#188c6e]/30 transition-all duration-350 relative overflow-hidden group w-full cursor-default h-full"
                     >
                       {/* Top accent glow line */}
                       <div className="absolute top-0 left-0 right-0 h-0.75 bg-linear-to-r from-teal-500 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
 
                       {/* Header Avatar and Rating */}
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-3.5">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center space-x-3.5 min-w-0">
                           <div
                             className={`w-13 h-13 rounded-2xl ${tutor.avatarBg} flex items-center justify-center text-white text-base font-extrabold shadow-md shrink-0 group-hover:scale-105 transition-transform duration-350`}
                           >
                             {tutor.initials}
                           </div>
-                          <div>
-                            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors duration-200">
+                          <div className="min-w-0">
+                            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors duration-200 truncate">
                               {tutor.name}
                             </h3>
-                            <div className="text-xs text-zinc-400 dark:text-zinc-550 flex items-center gap-1 mt-0.5">
-                              <GraduationCap className="w-3.5 h-3.5" />
-                              <span className="truncate max-w-32.5 font-semibold">{tutor.university}</span>
+                            <div className="text-xs text-zinc-400 dark:text-zinc-500 flex items-center gap-1 mt-0.5 min-w-0">
+                              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate max-w-30 font-semibold">{tutor.university}</span>
                             </div>
                           </div>
                         </div>
 
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100/50 dark:border-teal-900/40">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100/50 dark:border-teal-900/40 shrink-0 whitespace-nowrap">
                           <Award className="w-3 h-3 shrink-0" />
                           {tutor.badge}
                         </span>

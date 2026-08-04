@@ -72,10 +72,10 @@ export default function FeaturedTutors() {
               variant="slide-up"
               delay={idx * 150}
               duration={800}
-              className="w-full flex"
+              className="w-full h-full flex"
             >
               <div
-                className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-6 md:p-8 flex flex-col space-y-6 shadow-sm hover:shadow-xl hover:shadow-teal-500/5 hover:-translate-y-1.5 hover:border-teal-500/25 dark:hover:border-[#188c6e]/30 transition-all duration-350 relative overflow-hidden group w-full"
+                className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-sm hover:shadow-xl hover:shadow-teal-500/5 hover:-translate-y-1.5 hover:border-teal-500/25 dark:hover:border-[#188c6e]/30 transition-all duration-350 relative overflow-hidden group w-full h-full"
               >
                 {/* Accent hover top bar glow */}
                 <div className="absolute top-0 left-0 right-0 h-0.75 bg-linear-to-r from-teal-500 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
