@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "next-themes";
 import { 
@@ -15,9 +15,58 @@ import {
   Sun, 
   Moon, 
   User,
-  Sliders
+  Sliders,
+  Inbox,
+  BookOpen,
+  DollarSign,
+  Calendar
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+
+function SidebarNavigation() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  
+  const currentTab = searchParams.get("tab") || "overview";
+
+  const navigation = user?.role === "tutor"
+    ? [
+        { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
+        { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
+        { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
+        { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: DollarSign },
+        { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },
+      ]
+    : [
+        { name: "Overview", href: ROUTES.DASHBOARD.HOME, active: pathname === ROUTES.DASHBOARD.HOME && currentTab === "overview", icon: LayoutDashboard },
+        { name: "Users", href: ROUTES.DASHBOARD.USERS, active: pathname === ROUTES.DASHBOARD.USERS, icon: Users },
+        { name: "Settings", href: ROUTES.DASHBOARD.SETTINGS, active: pathname === ROUTES.DASHBOARD.SETTINGS, icon: Settings },
+      ];
+
+  return (
+    <nav className="flex-1 space-y-1 px-4 py-6">
+      {navigation.map((item) => {
+        const isActive = item.active;
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive
+                ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] dark:text-white shadow-sm"
+                : "text-zinc-655 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+            }`}
+          >
+            <Icon size={18} />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -25,15 +74,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-
-  const navigation = [
-    { name: "Overview", href: ROUTES.DASHBOARD.HOME, icon: LayoutDashboard },
-    { name: "Users", href: ROUTES.DASHBOARD.USERS, icon: Users },
-    { name: "Settings", href: ROUTES.DASHBOARD.SETTINGS, icon: Settings },
-  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 font-sans">
@@ -54,8 +96,8 @@ export default function DashboardLayout({
         {/* Sidebar Header */}
         <div className="flex h-16 items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Basione Admin
+            <span className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">
+              TutorKhujo
             </span>
           </Link>
           <button
@@ -67,26 +109,9 @@ export default function DashboardLayout({
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 space-y-1 px-4 py-6">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                }`}
-              >
-                <Icon size={18} />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        <Suspense fallback={<div className="flex-1 px-4 py-6 text-xs text-zinc-400 font-semibold">Loading...</div>}>
+          <SidebarNavigation />
+        </Suspense>
 
         {/* Sidebar Footer */}
         <div className="border-t border-zinc-100 p-4 dark:border-zinc-800">
