@@ -4,49 +4,10 @@ import React from "react";
 import { Star, MapPin, BookOpen, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 import ScrollReveal from "@/components/shared/ScrollReveal";
+import { MOCK_TUTORS } from "@/data/tutors";
 
 export default function FeaturedTutors() {
-  const tutors = [
-    {
-      name: "Sultana Razia",
-      avatarBg: "bg-emerald-600",
-      initials: "SR",
-      university: "Dhaka University (DU)",
-      department: "B.Sc in Mathematics",
-      rating: 5.0,
-      reviewsCount: 24,
-      subjects: ["Mathematics", "Higher Math", "Physics"],
-      salary: "৳ 6,000/month",
-      mode: "Home & Online",
-      badge: "Top Rated",
-    },
-    {
-      name: "Mahmudul Hasan",
-      avatarBg: "bg-blue-600",
-      initials: "MH",
-      university: "BUET",
-      department: "B.Sc in Civil Engineering",
-      rating: 4.9,
-      reviewsCount: 18,
-      subjects: ["Physics", "Chemistry", "Mathematics"],
-      salary: "৳ 7,500/month",
-      mode: "Home Tutoring",
-      badge: "Verified Expert",
-    },
-    {
-      name: "Adnan Chowdhury",
-      avatarBg: "bg-indigo-600",
-      initials: "AC",
-      university: "NSU",
-      department: "B.Sc in Computer Science",
-      rating: 4.8,
-      reviewsCount: 15,
-      subjects: ["ICT", "Mathematics", "English"],
-      salary: "৳ 5,000/month",
-      mode: "Online Only",
-      badge: "Popular",
-    },
-  ];
+  const tutors = MOCK_TUTORS.slice(0, 3);
 
   return (
     <section className="py-20 md:py-28 bg-zinc-50/50 dark:bg-zinc-950/20 transition-colors duration-300">
@@ -147,7 +108,7 @@ export default function FeaturedTutors() {
                       Expected Salary
                     </span>
                     <span className="text-base font-extrabold text-zinc-900 dark:text-white">
-                      {tutor.salary}
+                      ৳ {tutor.salary.toLocaleString()}/mo
                     </span>
                   </div>
 
@@ -157,14 +118,14 @@ export default function FeaturedTutors() {
                     </span>
                     <span className="text-xs font-bold text-[#0F5B47] dark:text-[#188c6e] flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
-                      {tutor.mode}
+                      {tutor.location} ({tutor.mode})
                     </span>
                   </div>
                 </div>
 
                 {/* View Profile Action */}
                 <Link
-                  href="/tutors"
+                  href={`/tutors/${tutor.id}`}
                   className="w-full flex items-center justify-center gap-2 py-3.5 bg-zinc-100 hover:bg-[#0F5B47] dark:bg-zinc-800 dark:hover:bg-[#188c6e] hover:text-white dark:hover:text-white text-zinc-850 dark:text-zinc-205 font-bold text-sm rounded-xl transition-all duration-200 group/btn shadow-xs hover:shadow-md active:scale-98 cursor-pointer"
                 >
                   <span>View Full Profile</span>

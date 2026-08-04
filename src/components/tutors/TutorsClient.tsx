@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Star,
   MapPin,
@@ -18,244 +19,7 @@ import {
   Check
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
-
-interface Tutor {
-  id: string;
-  name: string;
-  avatarBg: string;
-  initials: string;
-  university: string;
-  department: string;
-  rating: number;
-  reviewsCount: number;
-  subjects: string[];
-  classLevels: string[];
-  location: string;
-  city: string;
-  salary: number;
-  mode: "Home" | "Online" | "Both";
-  badge: string;
-  gender: "Male" | "Female";
-}
-
-const MOCK_TUTORS: Tutor[] = [
-  {
-    id: "1",
-    name: "Ahsan Habib",
-    avatarBg: "bg-emerald-600 dark:bg-emerald-700",
-    initials: "AH",
-    university: "Dhaka University (DU)",
-    department: "B.Sc in Mathematics",
-    rating: 4.9,
-    reviewsCount: 32,
-    subjects: ["Mathematics", "Physics"],
-    classLevels: ["Class 6-9", "SSC", "HSC"],
-    location: "Dhanmondi",
-    city: "Dhaka",
-    salary: 5000,
-    mode: "Both",
-    badge: "Top Rated",
-    gender: "Male"
-  },
-  {
-    id: "2",
-    name: "Nusrat Jahan",
-    avatarBg: "bg-teal-600 dark:bg-teal-700",
-    initials: "NJ",
-    university: "Dhaka University (DU)",
-    department: "B.A in English Literature",
-    rating: 4.8,
-    reviewsCount: 21,
-    subjects: ["English", "Biology"],
-    classLevels: ["Class 1-5", "Class 6-9", "SSC"],
-    location: "Banani",
-    city: "Dhaka",
-    salary: 6500,
-    mode: "Online",
-    badge: "Verified Expert",
-    gender: "Female"
-  },
-  {
-    id: "3",
-    name: "Tamvir Ahmed",
-    avatarBg: "bg-blue-600 dark:bg-blue-700",
-    initials: "TA",
-    university: "BUET",
-    department: "B.Sc in Computer Science (CSE)",
-    rating: 4.7,
-    reviewsCount: 15,
-    subjects: ["Mathematics", "Physics"],
-    classLevels: ["SSC", "HSC"],
-    location: "Uttara",
-    city: "Dhaka",
-    salary: 4500,
-    mode: "Home",
-    badge: "Popular",
-    gender: "Male"
-  },
-  {
-    id: "4",
-    name: "Farhana Akter",
-    avatarBg: "bg-rose-600 dark:bg-rose-700",
-    initials: "FA",
-    university: "North South University (NSU)",
-    department: "B.Sc in Biochemistry",
-    rating: 5.0,
-    reviewsCount: 42,
-    subjects: ["Chemistry", "Biology"],
-    classLevels: ["Class 6-9", "SSC", "HSC"],
-    location: "Gulshan",
-    city: "Dhaka",
-    salary: 8000,
-    mode: "Home",
-    badge: "Top Rated",
-    gender: "Female"
-  },
-  {
-    id: "5",
-    name: "Saiful Islam",
-    avatarBg: "bg-indigo-600 dark:bg-indigo-700",
-    initials: "SI",
-    university: "BUET",
-    department: "B.Sc in Electrical Engineering (EEE)",
-    rating: 4.8,
-    reviewsCount: 29,
-    subjects: ["Physics", "Mathematics"],
-    classLevels: ["SSC", "HSC"],
-    location: "Mirpur",
-    city: "Dhaka",
-    salary: 5500,
-    mode: "Both",
-    badge: "Verified Expert",
-    gender: "Male"
-  },
-  {
-    id: "6",
-    name: "Sabrina Yasmin",
-    avatarBg: "bg-orange-600 dark:bg-orange-700",
-    initials: "SY",
-    university: "Dhaka University (DU)",
-    department: "M.A in English Literature",
-    rating: 4.8,
-    reviewsCount: 19,
-    subjects: ["English"],
-    classLevels: ["Class 1-5", "Class 6-9", "SSC", "HSC"],
-    location: "Banasree",
-    city: "Dhaka",
-    salary: 7000,
-    mode: "Online",
-    badge: "Popular",
-    gender: "Female"
-  },
-  {
-    id: "7",
-    name: "Tanvir Rahman",
-    avatarBg: "bg-sky-600 dark:bg-sky-700",
-    initials: "TR",
-    university: "Dhaka Medical College (DMC)",
-    department: "MBBS (Final Year)",
-    rating: 4.9,
-    reviewsCount: 11,
-    subjects: ["Biology", "Chemistry"],
-    classLevels: ["SSC", "HSC"],
-    location: "Mohammadpur",
-    city: "Dhaka",
-    salary: 6000,
-    mode: "Home",
-    badge: "Verified Expert",
-    gender: "Male"
-  },
-  {
-    id: "8",
-    name: "Anika Tabassum",
-    avatarBg: "bg-purple-600 dark:bg-purple-700",
-    initials: "AT",
-    university: "North South University (NSU)",
-    department: "B.Sc in Microbiology",
-    rating: 4.9,
-    reviewsCount: 26,
-    subjects: ["Biology", "English"],
-    classLevels: ["Class 1-5", "Class 6-9", "SSC"],
-    location: "Bashundhara",
-    city: "Dhaka",
-    salary: 7500,
-    mode: "Both",
-    badge: "Top Rated",
-    gender: "Female"
-  },
-  {
-    id: "9",
-    name: "Kazi Nafis",
-    avatarBg: "bg-cyan-600 dark:bg-cyan-700",
-    initials: "KN",
-    university: "IUT",
-    department: "B.Sc in Mechanical Engineering",
-    rating: 4.6,
-    reviewsCount: 8,
-    subjects: ["Mathematics", "Physics"],
-    classLevels: ["Class 6-9", "SSC"],
-    location: "Wari",
-    city: "Dhaka",
-    salary: 5000,
-    mode: "Online",
-    badge: "Popular",
-    gender: "Male"
-  },
-  {
-    id: "10",
-    name: "Tasnim Alam",
-    avatarBg: "bg-fuchsia-600 dark:bg-fuchsia-700",
-    initials: "TA",
-    university: "BRAC University",
-    department: "B.Sc in Physics",
-    rating: 4.9,
-    reviewsCount: 14,
-    subjects: ["Physics", "Mathematics"],
-    classLevels: ["Class 6-9", "SSC", "HSC"],
-    location: "Dhanmondi",
-    city: "Dhaka",
-    salary: 7000,
-    mode: "Home",
-    badge: "Top Rated",
-    gender: "Female"
-  },
-  {
-    id: "11",
-    name: "Rafid Al-Hasan",
-    avatarBg: "bg-violet-600 dark:bg-violet-700",
-    initials: "RH",
-    university: "MIST",
-    department: "B.Sc in Civil Engineering",
-    rating: 4.7,
-    reviewsCount: 12,
-    subjects: ["Mathematics", "Physics", "Chemistry"],
-    classLevels: ["SSC", "HSC"],
-    location: "Mirpur",
-    city: "Dhaka",
-    salary: 4800,
-    mode: "Both",
-    badge: "Verified Expert",
-    gender: "Male"
-  },
-  {
-    id: "12",
-    name: "Sumaiya Afrin",
-    avatarBg: "bg-pink-600 dark:bg-pink-700",
-    initials: "SA",
-    university: "Dhaka University (DU)",
-    department: "B.Sc in Chemistry",
-    rating: 4.8,
-    reviewsCount: 17,
-    subjects: ["Chemistry", "Mathematics"],
-    classLevels: ["Class 6-9", "SSC", "HSC"],
-    location: "Banani",
-    city: "Dhaka",
-    salary: 5200,
-    mode: "Online",
-    badge: "Popular",
-    gender: "Female"
-  }
-];
+import { MOCK_TUTORS } from "@/data/tutors";
 
 const LOCATIONS = ["Dhaka", "Dhanmondi", "Banani", "Uttara", "Gulshan", "Mirpur", "Banasree", "Mohammadpur", "Bashundhara", "Wari"];
 const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology"];
@@ -833,10 +597,13 @@ export default function TutorsClient() {
                       </div>
 
                       {/* View Profile Action button */}
-                      <button className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] dark:bg-zinc-900 dark:hover:bg-[#188c6e] hover:text-white dark:hover:text-white text-zinc-800 dark:text-zinc-200 font-bold text-xs rounded-xl transition-all duration-200 group/btn shadow-2xs hover:shadow-md cursor-pointer">
+                      <Link
+                        href={`/tutors/${tutor.id}`}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] dark:bg-zinc-900 dark:hover:bg-[#188c6e] hover:text-white dark:hover:text-white text-zinc-800 dark:text-zinc-200 font-bold text-xs rounded-xl transition-all duration-200 group/btn shadow-2xs hover:shadow-md cursor-pointer"
+                      >
                         <span>View Full Profile</span>
                         <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.75" />
-                      </button>
+                      </Link>
                     </div>
                   </ScrollReveal>
                 ))}
