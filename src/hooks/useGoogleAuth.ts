@@ -44,8 +44,12 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
       
       login(accessToken, user);
       
-      // Redirect to home page
-      window.location.href = ROUTES.HOME;
+      // Redirect to role selection if first time, otherwise to home page
+      if (user?.isFirstLogin) {
+        window.location.href = "/who-are-you";
+      } else {
+        window.location.href = ROUTES.HOME;
+      }
     } catch (err: any) {
       console.error("Google authentication error:", err);
       const errMsg = err.response?.data?.message || "Google sign-in failed. Please try again.";

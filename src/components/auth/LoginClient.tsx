@@ -68,8 +68,12 @@ export default function LoginClient() {
       
       login(accessToken, user);
       
-      // Redirect to home page
-      window.location.href = ROUTES.HOME;
+      // Redirect to role selection if first time, otherwise to home page
+      if (user?.isFirstLogin) {
+        window.location.href = "/who-are-you";
+      } else {
+        window.location.href = ROUTES.HOME;
+      }
     } catch (err: any) {
       const errMsg = err.response?.data?.message || "Invalid credentials. Please try again.";
       setError(errMsg);
