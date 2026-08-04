@@ -16,6 +16,7 @@ export default function Navbar() {
   const navLinks = [
     { label: "How it works", href: "#how-it-works" },
     { label: "Find a Tutor", href: "/tutors" },
+    { label: "Tuition Jobs", href: "/tuition-jobs" },
     { label: "Become a Tutor", href: "/become-tutor" },
     { label: "About", href: "/about" },
   ];
