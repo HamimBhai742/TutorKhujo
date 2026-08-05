@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MapPin, BookOpen, ArrowRight, Briefcase, Calendar, Clock, DollarSign } from "lucide-react";
+import { MapPin, ArrowRight, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { MOCK_TUITION_POSTS } from "@/data/dashboard";

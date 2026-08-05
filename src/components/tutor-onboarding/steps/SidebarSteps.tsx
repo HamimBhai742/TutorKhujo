@@ -7,7 +7,7 @@ interface SidebarStepsProps {
   fullName: string;
 }
 
-export default function SidebarSteps({ activeStep, setActiveStep, fullName }: SidebarStepsProps) {
+export default function SidebarSteps({ activeStep, setActiveStep }: SidebarStepsProps) {
   const steps = [
     { number: 1, label: "Personal Info", icon: User },
     { number: 2, label: "Education", icon: GraduationCap },
