@@ -21,7 +21,8 @@ import {
   DollarSign,
   Calendar,
   MessageSquare,
-  FileText
+  FileText,
+  FileCheck
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
@@ -51,8 +52,11 @@ function SidebarNavigation() {
         { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: DollarSign },
       ]
     : [
-        { name: "Overview", href: ROUTES.DASHBOARD.HOME, active: pathname === ROUTES.DASHBOARD.HOME && currentTab === "overview", icon: LayoutDashboard },
+        { name: "Overview", href: ROUTES.DASHBOARD.HOME, active: pathname === ROUTES.DASHBOARD.HOME, icon: LayoutDashboard },
         { name: "Users", href: ROUTES.DASHBOARD.USERS, active: pathname === ROUTES.DASHBOARD.USERS, icon: Users },
+        { name: "Tutor Verifications", href: ROUTES.DASHBOARD.VERIFICATIONS, active: pathname === ROUTES.DASHBOARD.VERIFICATIONS, icon: FileCheck },
+        { name: "Tuition Posts", href: ROUTES.DASHBOARD.TUITIONS, active: pathname === ROUTES.DASHBOARD.TUITIONS, icon: FileText },
+        { name: "Payments & Invoices", href: ROUTES.DASHBOARD.PAYMENTS, active: pathname === ROUTES.DASHBOARD.PAYMENTS, icon: DollarSign },
         { name: "Settings", href: ROUTES.DASHBOARD.SETTINGS, active: pathname === ROUTES.DASHBOARD.SETTINGS, icon: Settings },
       ];
 
