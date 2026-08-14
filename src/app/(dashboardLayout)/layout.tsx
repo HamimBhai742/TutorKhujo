@@ -18,13 +18,13 @@ import {
   Sliders,
   Inbox,
   BookOpen,
-  DollarSign,
   Calendar,
   MessageSquare,
   FileText,
   FileCheck
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 
 function SidebarNavigation() {
   const pathname = usePathname();
@@ -39,7 +39,7 @@ function SidebarNavigation() {
         { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
         { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
-        { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: DollarSign },
+        { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: TakaIcon },
         { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },
       ]
     : user?.role === "student"
@@ -49,14 +49,14 @@ function SidebarNavigation() {
         { name: "Tutor Applications", href: "/dashboard?tab=applications", active: currentTab === "applications", icon: Users },
         { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
         { name: "Active Tutors", href: "/dashboard?tab=active-tutors", active: currentTab === "active-tutors", icon: BookOpen },
-        { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: DollarSign },
+        { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: TakaIcon },
       ]
     : [
         { name: "Overview", href: ROUTES.DASHBOARD.HOME, active: pathname === ROUTES.DASHBOARD.HOME, icon: LayoutDashboard },
         { name: "Users", href: ROUTES.DASHBOARD.USERS, active: pathname === ROUTES.DASHBOARD.USERS, icon: Users },
         { name: "Tutor Verifications", href: ROUTES.DASHBOARD.VERIFICATIONS, active: pathname === ROUTES.DASHBOARD.VERIFICATIONS, icon: FileCheck },
         { name: "Tuition Posts", href: ROUTES.DASHBOARD.TUITIONS, active: pathname === ROUTES.DASHBOARD.TUITIONS, icon: FileText },
-        { name: "Payments & Invoices", href: ROUTES.DASHBOARD.PAYMENTS, active: pathname === ROUTES.DASHBOARD.PAYMENTS, icon: DollarSign },
+        { name: "Payments & Invoices", href: ROUTES.DASHBOARD.PAYMENTS, active: pathname === ROUTES.DASHBOARD.PAYMENTS, icon: TakaIcon },
         { name: "Settings", href: ROUTES.DASHBOARD.SETTINGS, active: pathname === ROUTES.DASHBOARD.SETTINGS, icon: Settings },
       ];
 

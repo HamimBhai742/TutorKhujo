@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
   BookOpen,
-  DollarSign,
   Clock,
   MapPin,
   Check,
@@ -20,6 +19,7 @@ import {
   FileText,
   Plus
 } from "lucide-react";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 import {
   MOCK_TUITION_POSTS,
   MOCK_TUTOR_APPLICATIONS,
@@ -233,7 +233,7 @@ export default function StudentDashboardClient() {
                 Fees Paid
               </span>
               <div className="rounded-xl bg-zinc-50 p-2.5 dark:bg-zinc-800/80 text-emerald-500">
-                <DollarSign size={20} />
+                <TakaIcon size={20} />
               </div>
             </div>
             <div className="mt-4">

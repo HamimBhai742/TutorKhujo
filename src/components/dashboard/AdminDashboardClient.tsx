@@ -6,7 +6,6 @@ import {
   Users,
   FileCheck,
   FileText,
-  DollarSign,
   TrendingUp,
   ArrowRight,
   ShieldAlert,
@@ -16,6 +15,7 @@ import {
   Clock,
   ExternalLink
 } from "lucide-react";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 import {
   MOCK_ADMIN_USERS,
   MOCK_ADMIN_VERIFICATIONS,
@@ -137,7 +137,7 @@ export default function AdminDashboardClient() {
               Total Invoiced
             </span>
             <div className="rounded-xl bg-zinc-50 p-2.5 dark:bg-zinc-800/80 text-emerald-500">
-              <DollarSign size={20} />
+              <TakaIcon size={20} />
             </div>
           </div>
           <div className="mt-4">

@@ -8,9 +8,9 @@ import {
   Play,
   XCircle,
   Trash2,
-  MapPin,
-  DollarSign
+  MapPin
 } from "lucide-react";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 import { MOCK_ADMIN_TUITION_POSTS, AdminTuitionPost } from "@/data/adminDashboard";
 
 export default function AdminTuitionsClient() {
@@ -160,7 +160,7 @@ export default function AdminTuitionsClient() {
                     <span>{post.location}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <DollarSign size={16} className="text-zinc-400" />
+                    <TakaIcon size={16} className="text-zinc-400" />
                     <span>৳ {post.budget}/month — {post.frequency}</span>
                   </div>
                   <div className="flex items-center gap-2">

@@ -18,7 +18,6 @@ import {
   RotateCcw,
   Check,
   Search,
-  DollarSign,
   Calendar,
   Briefcase,
   TrendingUp,
@@ -28,6 +27,7 @@ import {
   UserCheck
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 import { MOCK_TUITION_POSTS, TuitionPost } from "@/data/dashboard";
 
 const LOCATIONS = [
@@ -829,7 +829,7 @@ export default function TuitionsClient() {
                     className="w-full pl-9 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
                     required
                   />
-                  <DollarSign className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <TakaIcon className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 

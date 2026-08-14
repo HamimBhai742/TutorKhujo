@@ -10,9 +10,9 @@ import {
   Clock,
   Sparkles,
   BookOpen,
-  DollarSign,
   Check
 } from "lucide-react";
+import { TakaIcon } from "@/components/shared/TakaIcon";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 
 export default function BecomeTutorPage() {
@@ -216,7 +216,7 @@ export default function BecomeTutorPage() {
                         <div className="bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 p-4 rounded-2xl space-y-2">
                           <div className="flex justify-between items-center text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide">
                             <span>Earnings</span>
-                            <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                            <TakaIcon className="w-3.5 h-3.5 text-emerald-500" />
                           </div>
                           <p className="text-lg font-black text-zinc-800 dark:text-white leading-none">
                             ৳ 24,500
