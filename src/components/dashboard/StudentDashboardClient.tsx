@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Users,
   BookOpen,
@@ -22,7 +23,14 @@ import {
   Sparkles,
   AlertTriangle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Star,
+  ArrowUpRight,
+  MessageSquare,
+  GraduationCap,
+  CheckCircle2,
+  ExternalLink
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import api from "@/lib/api";
@@ -37,6 +45,7 @@ import {
   ChatContact,
   ChatMessage
 } from "@/data/dashboard";
+import { MOCK_TUTORS, Tutor } from "@/data/tutors";
 
 export default function StudentDashboardClient() {
   const searchParams = useSearchParams();
@@ -51,6 +60,7 @@ export default function StudentDashboardClient() {
 
   // Other dynamic/interactive tab states
   const [applications, setApplications] = useState<TutorApplication[]>(MOCK_TUTOR_APPLICATIONS);
+  const [selectedApplicant, setSelectedApplicant] = useState<TutorApplication | null>(null);
   const [invoices] = useState<Invoice[]>(MOCK_INVOICES);
   const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
   
@@ -363,11 +373,75 @@ export default function StudentDashboardClient() {
     }
   };
 
-  const handleHireTutor = (app: TutorApplication) => {
+  const handleHireTutor = async (app: TutorApplication) => {
+    // 1. Mark applicant as Hired
     setApplications((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: "Hired" as const } : a))
     );
-    showToast("success", `Congratulations! You have hired ${app.tutorName}. Their class tracker has been activated.`);
+
+    // 2. Find matching tuition post to auto-pause
+    const targetPost = posts.find(
+      (p) =>
+        (app.postId && p.id === app.postId) ||
+        p.subjects.some((s) => app.subject.toLowerCase().includes(s.toLowerCase())) ||
+        app.subject.toLowerCase().includes(p.classLevel.toLowerCase())
+    ) || posts.find((p) => p.status === "Active");
+
+    if (targetPost && targetPost.status === "Active") {
+      // Optimistically update local posts state
+      setPosts((prev) =>
+        prev.map((p) => (p.id === targetPost.id ? { ...p, status: "Paused" } : p))
+      );
+
+      // Persist status change to backend
+      try {
+        await api.patch(`/tuitions/${targetPost.id}/status`, { status: "Paused" });
+      } catch (err) {
+        console.error("Error updating tuition post status on hire:", err);
+      }
+
+      showToast(
+        "success",
+        `🎉 Congratulations! You hired ${app.tutorName}. Your tuition post (${targetPost.classLevel}) is now automatically Paused.`
+      );
+    } else {
+      showToast(
+        "success",
+        `🎉 Congratulations! You have hired ${app.tutorName}. Their class tracker has been activated.`
+      );
+    }
+  };
+
+  const handleStartChatWithTutor = (app: TutorApplication) => {
+    const tutorIdentifier = app.tutorId || app.id || "tutor";
+    const existingChat = chats.find(
+      (c) => c.studentName.toLowerCase() === app.tutorName.toLowerCase() || c.id === `chat-${tutorIdentifier}`
+    );
+    if (existingChat) {
+      setActiveChatId(existingChat.id);
+    } else {
+      const newChat: ChatContact = {
+        id: `chat-${tutorIdentifier}`,
+        studentName: app.tutorName,
+        avatarBg: app.avatarBg,
+        lastMessage: `Connected regarding tuition application for ${app.subject}`,
+        time: "Just now",
+        unreadCount: 0,
+        messages: [
+          {
+            id: `msg-${tutorIdentifier}-init`,
+            sender: "tutor",
+            content: `Hello! Thank you for considering my application for ${app.subject}. Feel free to ask any questions or schedule a demo class.`,
+            time: "Just now",
+          },
+        ],
+      };
+      setChats((prev) => [newChat, ...prev]);
+      setActiveChatId(newChat.id);
+    }
+    setSelectedApplicant(null);
+    router.push("/dashboard?tab=messages");
+    showToast("success", `Opened chat conversation with ${app.tutorName}.`);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -566,27 +640,59 @@ export default function StudentDashboardClient() {
 
             <div className="space-y-4">
               {applications.filter(a => a.status === "Pending").slice(0, 3).map((app) => (
-                <div key={app.id} className="p-4 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-10 h-10 rounded-full ${app.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs`}>
+                <div
+                  key={app.id}
+                  onClick={() => setSelectedApplicant(app)}
+                  className="p-4 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 hover:border-[#0F5B47]/40 dark:hover:border-[#188c6e]/40 rounded-2xl flex items-center justify-between gap-4 transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-full ${app.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}
+                      title="Click to view details"
+                    >
                       {app.tutorName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h4 className="text-sm font-black text-zinc-850 dark:text-zinc-200 leading-tight">
-                        {app.tutorName}
-                      </h4>
-                      <p className="text-[10px] font-bold text-zinc-450 dark:text-zinc-550 mt-0.5">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-zinc-850 dark:text-zinc-200 group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors truncate">
+                          {app.tutorName}
+                        </h4>
+                        {app.rating && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/30 text-amber-600 text-[10px] font-black shrink-0">
+                            <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                            {app.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-bold text-zinc-450 dark:text-zinc-550 mt-0.5 truncate">
                         {app.institution} &bull; {app.subject}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+                  <div className="text-right shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">
                       ৳ {app.salaryBid.toLocaleString()}/mo
                     </span>
                     <button
+                      type="button"
+                      onClick={() => setSelectedApplicant(app)}
+                      className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-[#0F5B47]/10 dark:hover:bg-[#188c6e]/10 text-zinc-600 dark:text-zinc-300 hover:text-[#0F5B47] dark:hover:text-[#188c6e] rounded-xl transition-colors cursor-pointer"
+                      title="View Application Details"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStartChatWithTutor(app)}
+                      className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-[#0F5B47]/10 dark:hover:bg-[#188c6e]/10 text-zinc-600 dark:text-zinc-300 hover:text-[#0F5B47] dark:hover:text-[#188c6e] rounded-xl transition-colors cursor-pointer"
+                      title="Chat with Tutor"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleHireTutor(app)}
-                      className="px-2.5 py-1 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-[9px] font-extrabold uppercase rounded-lg transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-[9px] font-extrabold uppercase rounded-xl transition-colors cursor-pointer"
                     >
                       Hire
                     </button>
@@ -804,49 +910,137 @@ export default function StudentDashboardClient() {
       {/* --- PANEL 3: TUTOR APPLICATIONS --- */}
       {currentTab === "applications" && (
         <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs">
-          <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-zinc-100 dark:border-zinc-900 mb-6 gap-2">
+            <div>
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+                All Tutor Applications ({applications.length})
+              </h3>
+              <p className="text-xs font-medium text-zinc-450 dark:text-zinc-500 mt-0.5">
+                Click on any tutor or &quot;View Profile&quot; to review their credentials, reviews, and teaching subjects.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 rounded-xl">
+                {applications.filter(a => a.status === "Pending").length} Pending
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
             {applications.map((app) => (
-              <div key={app.id} className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div
+                key={app.id}
+                onClick={() => setSelectedApplicant(app)}
+                className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 hover:border-[#0F5B47]/40 dark:hover:border-[#188c6e]/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-200 cursor-pointer group"
+              >
                 <div className="flex gap-4 items-center">
-                  <div className={`w-12 h-12 rounded-full ${app.avatarBg} text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs`}>
+                  <div
+                    className={`w-14 h-14 rounded-2xl ${app.avatarBg} text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform duration-200`}
+                    title="Click to view details"
+                  >
                     {app.tutorName.charAt(0).toUpperCase()}
                   </div>
+
                   <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h4 className="text-sm font-black text-zinc-900 dark:text-white">
-                        {app.tutorName}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h4 className="text-base font-black text-zinc-900 dark:text-white group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors flex items-center gap-1">
+                        <span>{app.tutorName}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 -translate-y-0.5 translate-x-0.5 transition-all text-[#0F5B47] dark:text-[#188c6e]" />
                       </h4>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                        app.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600" :
-                        app.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e]" :
+
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50 dark:border-amber-900/40">
+                        <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                        {app.rating.toFixed(1)}
+                      </span>
+
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                        app.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-200/40 dark:border-amber-900/30" :
+                        app.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200/40 dark:border-emerald-900/30" :
                         "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                       }`}>
                         {app.status}
                       </span>
                     </div>
-                    <p className="text-xs font-semibold text-zinc-450 dark:text-zinc-500">
-                      {app.institution} &bull; {app.subject}
+
+                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span>{app.institution}</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
+                      <span className="text-[#0F5B47] dark:text-[#188c6e] font-bold">{app.subject}</span>
+                      {app.location && (
+                        <>
+                          <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
+                          <span className="text-zinc-400">{app.location}</span>
+                        </>
+                      )}
                     </p>
+
+                    {app.appliedDate && (
+                      <p className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                        Applied {app.appliedDate}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4">
-                  <span className="text-sm font-black text-zinc-900 dark:text-white">
-                    ৳ {app.salaryBid.toLocaleString()}/mo
-                  </span>
-                  {app.status === "Pending" && (
-                    <div className="flex gap-2">
+                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-zinc-100 dark:border-zinc-900" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-left md:text-right">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Salary Bid</span>
+                    <span className="text-base md:text-lg font-black text-[#0F5B47] dark:text-[#188c6e]">
+                      ৳ {app.salaryBid.toLocaleString()}
+                      <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 ml-1">/mo</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* View Details Button */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedApplicant(app)}
+                      className="px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-black rounded-xl transition-all inline-flex items-center gap-1.5 border border-zinc-200/60 dark:border-zinc-750/50 shadow-2xs hover:shadow-xs cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                      <span>View Details</span>
+                    </button>
+
+                    {/* Chat with Tutor Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleStartChatWithTutor(app)}
+                      className="px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-black rounded-xl transition-all inline-flex items-center gap-1.5 border border-zinc-200/60 dark:border-zinc-750/50 shadow-2xs hover:shadow-xs cursor-pointer"
+                      title="Chat with Tutor"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-[#0F5B47] dark:text-[#188c6e]" />
+                      <span>Chat</span>
+                    </button>
+
+                    {/* Hire Tutor Button */}
+                    {app.status === "Pending" ? (
                       <button
+                        type="button"
                         onClick={() => handleHireTutor(app)}
-                        className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
+                        className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer shadow-xs"
                       >
                         Hire Tutor
                       </button>
-                    </div>
-                  )}
+                    ) : (
+                      <span className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-[#0F5B47] dark:text-[#188c6e] text-xs font-black rounded-xl border border-emerald-200/50">
+                        Hired
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
+
+            {applications.length === 0 && (
+              <div className="text-center py-16">
+                <Users className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
+                <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200">No applications yet</h4>
+                <p className="text-xs text-zinc-450 dark:text-zinc-500 max-w-sm mx-auto mt-1">
+                  Once tutors submit their bids on your active tuition posts, their profile applications will appear here.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1346,6 +1540,227 @@ export default function StudentDashboardClient() {
         variant="danger"
         isLoading={actionLoading}
       />
+
+      {/* ========================================================================= */}
+      {/* 4. APPLICANT PROFILE DETAILS MODAL WITH HIRE & CHAT */}
+      {/* ========================================================================= */}
+      {selectedApplicant && (() => {
+        const tutorDetails: Tutor | undefined = MOCK_TUTORS.find(
+          (t) =>
+            t.id === selectedApplicant.tutorId ||
+            t.name.toLowerCase() === selectedApplicant.tutorName.toLowerCase()
+        );
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+              {/* Top Accent Gradient Line */}
+              <div className="h-1.5 w-full bg-linear-to-r from-teal-500 to-[#0F5B47]" />
+
+              {/* Modal Header */}
+              <div className="p-5 md:p-6 border-b border-zinc-150/80 dark:border-zinc-850 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100 dark:border-teal-900/40 text-xs font-black rounded-full uppercase tracking-wider">
+                    Applicant Profile
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase ${
+                    selectedApplicant.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50" :
+                    selectedApplicant.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/30 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200/50" :
+                    "bg-zinc-100 dark:bg-zinc-800 text-zinc-600"
+                  }`}>
+                    {selectedApplicant.status}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedApplicant(null)}
+                  className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Scrollable Body */}
+              <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1">
+                {/* Tutor Hero Card */}
+                <div className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-150/60 dark:border-zinc-850 p-6 rounded-2xl flex flex-col md:flex-row gap-6 items-start">
+                  <div className="relative shrink-0 mx-auto md:mx-0">
+                    <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl ${selectedApplicant.avatarBg} flex items-center justify-center text-white text-3xl font-black shadow-md`}>
+                      {selectedApplicant.tutorName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-950 shadow-xs">
+                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 text-center md:text-left space-y-2 w-full">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <h3 className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white">
+                        {selectedApplicant.tutorName}
+                      </h3>
+                      <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50 w-fit mx-auto md:mx-0">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        {selectedApplicant.rating.toFixed(1)} (Verified Tutor)
+                      </span>
+                    </div>
+
+                    <p className="text-xs md:text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+                      {tutorDetails?.department || selectedApplicant.institution} &bull; {tutorDetails?.university || selectedApplicant.institution}
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2 text-xs font-bold text-zinc-500">
+                      {selectedApplicant.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                          {selectedApplicant.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
+                        {selectedApplicant.subject}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bid Highlights */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                      Monthly Salary Bid
+                    </span>
+                    <span className="text-lg md:text-xl font-black text-[#0F5B47] dark:text-[#188c6e]">
+                      ৳ {selectedApplicant.salaryBid.toLocaleString()}
+                      <span className="text-xs font-semibold text-zinc-450 ml-1">/mo</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                      Tutoring Mode
+                    </span>
+                    <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
+                      {tutorDetails?.mode === "Both" ? "Home & Online" : tutorDetails?.mode || "Home Tutoring"}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 md:col-span-1 bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                      Class Frequency
+                    </span>
+                    <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
+                      {tutorDetails?.classFrequency || "3 Days / Week"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* About & Proposal */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
+                    About Tutor & Teaching Proposal
+                  </h4>
+                  <div className="bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 p-4 rounded-2xl text-xs md:text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed">
+                    {tutorDetails?.about || `I am an experienced tutor specializing in ${selectedApplicant.subject}. I have strong pedagogical experience preparing students with problem solving, mock evaluations, and structured chapter summaries.`}
+                  </div>
+                </div>
+
+                {/* Education Background */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
+                    Education & Qualifications
+                  </h4>
+                  <div className="space-y-2">
+                    {(tutorDetails?.education || [
+                      { degree: selectedApplicant.subject + " Specialist", institution: selectedApplicant.institution }
+                    ]).map((edu, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl">
+                        <div className="p-2 bg-teal-50 dark:bg-teal-950/30 text-[#0F5B47] dark:text-[#188c6e] rounded-lg shrink-0">
+                          <GraduationCap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h5 className="text-xs md:text-sm font-black text-zinc-900 dark:text-white">{edu.degree}</h5>
+                          <p className="text-[11px] font-semibold text-zinc-450 dark:text-zinc-500">{edu.institution}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Student Reviews */}
+                {tutorDetails?.reviews && tutorDetails.reviews.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
+                      Student Reviews & Feedback
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {tutorDetails.reviews.map((rev, i) => (
+                        <div key={i} className="p-3.5 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">{rev.reviewer}</span>
+                            <span className="inline-flex items-center gap-0.5 text-amber-500 text-[10px] font-black">
+                              <Star className="w-3 h-3 fill-amber-500" />
+                              {rev.rating}
+                            </span>
+                          </div>
+                          <p className="text-[11px] italic text-zinc-600 dark:text-zinc-400 leading-snug">
+                            &ldquo;{rev.comment}&rdquo;
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Bottom Actions Bar */}
+              <div className="p-5 border-t border-zinc-150/80 dark:border-zinc-850 bg-zinc-50/80 dark:bg-zinc-900/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                  <Link
+                    href={`/tutors/${selectedApplicant.tutorId || '1'}`}
+                    target="_blank"
+                    className="text-xs font-bold text-zinc-500 hover:text-[#0F5B47] dark:hover:text-[#188c6e] flex items-center gap-1 transition-colors"
+                  >
+                    <span>Open Public Profile</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  {/* Chat Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleStartChatWithTutor(selectedApplicant)}
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-100 font-extrabold text-xs rounded-xl transition-all cursor-pointer border border-zinc-200/60 dark:border-zinc-700 shadow-2xs"
+                  >
+                    <MessageSquare className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
+                    <span>Chat with Tutor</span>
+                  </button>
+
+                  {/* Hire Button */}
+                  {selectedApplicant.status === "Pending" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleHireTutor(selectedApplicant);
+                        setSelectedApplicant((prev) => prev ? { ...prev, status: "Hired" } : null);
+                      }}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+                    >
+                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <span>Hire Tutor</span>
+                    </button>
+                  ) : (
+                    <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200 dark:border-emerald-900/50 font-black text-xs rounded-xl">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Tutor Hired</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

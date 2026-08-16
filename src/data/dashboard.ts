@@ -238,12 +238,16 @@ export interface TuitionPost {
 
 export interface TutorApplication {
   id: string;
+  postId?: string;
+  tutorId: string;
   tutorName: string;
   institution: string;
   subject: string;
   rating: number;
   salaryBid: number;
   avatarBg: string;
+  location?: string;
+  appliedDate?: string;
   status: "Pending" | "Shortlisted" | "Hired" | "Rejected";
 }
 
@@ -285,32 +289,41 @@ export const MOCK_TUITION_POSTS: TuitionPost[] = [
 export const MOCK_TUTOR_APPLICATIONS: TutorApplication[] = [
   {
     id: "app-1",
-    tutorName: "Mahmudul Hasan",
-    institution: "BUET",
+    tutorId: "5",
+    tutorName: "Saiful Islam",
+    institution: "BUET • Electrical Engineering",
     subject: "Mathematics & Physics",
     rating: 4.8,
     salaryBid: 5500,
-    avatarBg: "bg-emerald-500",
+    avatarBg: "bg-emerald-600",
+    location: "Mirpur, Dhaka",
+    appliedDate: "Today, 4:30 PM",
     status: "Pending"
   },
   {
     id: "app-2",
-    tutorName: "Anika Tasnim",
-    institution: "Dhaka University",
-    subject: "Higher Mathematics & Statistics",
-    rating: 4.9,
+    tutorId: "4",
+    tutorName: "Farhana Akter",
+    institution: "Dhaka University • Chemistry",
+    subject: "Chemistry & Biology",
+    rating: 5.0,
     salaryBid: 5000,
-    avatarBg: "bg-rose-500",
+    avatarBg: "bg-rose-600",
+    location: "Gulshan, Dhaka",
+    appliedDate: "Yesterday",
     status: "Pending"
   },
   {
     id: "app-3",
-    tutorName: "Tanvir Ahmed",
-    institution: "NSU",
-    subject: "Mathematics",
-    rating: 4.6,
+    tutorId: "1",
+    tutorName: "Ahsan Habib",
+    institution: "Dhaka University • Mathematics",
+    subject: "Higher Mathematics & Statistics",
+    rating: 4.9,
     salaryBid: 4500,
-    avatarBg: "bg-indigo-500",
+    avatarBg: "bg-indigo-600",
+    location: "Dhanmondi, Dhaka",
+    appliedDate: "2 days ago",
     status: "Pending"
   }
 ];
