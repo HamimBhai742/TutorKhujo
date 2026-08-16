@@ -30,6 +30,8 @@ import ScrollReveal from "@/components/shared/ScrollReveal";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import { MOCK_TUITION_POSTS, TuitionPost } from "@/data/dashboard";
 
+import api from "@/lib/api";
+
 const LOCATIONS = [
   "All Dhaka",
   "Dhanmondi",
@@ -45,70 +47,10 @@ const LOCATIONS = [
 const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology", "General Science", "Higher Mathematics"];
 const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "Class 10 (SSC)", "HSC"];
 
-// Additional mock data for visual richness
-const EXTRA_TUITION_POSTS: TuitionPost[] = [
-  {
-    id: "post-3",
-    classLevel: "HSC (2nd Year)",
-    subjects: ["Physics", "Chemistry"],
-    budget: 8000,
-    mode: "Home",
-    frequency: "3 Days / Week",
-    location: "Gulshan, Dhaka",
-    status: "Active",
-    date: "Aug 02, 2026"
-  },
-  {
-    id: "post-4",
-    classLevel: "Class 9",
-    subjects: ["Mathematics", "English"],
-    budget: 6000,
-    mode: "Online",
-    frequency: "3 Days / Week",
-    location: "Banani, Dhaka",
-    status: "Active",
-    date: "Jul 31, 2026"
-  },
-  {
-    id: "post-5",
-    classLevel: "HSC (1st Year)",
-    subjects: ["Biology"],
-    budget: 5000,
-    mode: "Home",
-    frequency: "2 Days / Week",
-    location: "Uttara, Dhaka",
-    status: "Active",
-    date: "Jul 29, 2026"
-  },
-  {
-    id: "post-6",
-    classLevel: "Class 7",
-    subjects: ["All Subjects"],
-    budget: 7000,
-    mode: "Home",
-    frequency: "4 Days / Week",
-    location: "Mirpur, Dhaka",
-    status: "Active",
-    date: "Jul 28, 2026"
-  },
-  {
-    id: "post-7",
-    classLevel: "Class 10 (SSC)",
-    subjects: ["English", "ICT"],
-    budget: 5500,
-    mode: "Online",
-    frequency: "3 Days / Week",
-    location: "Banasree, Dhaka",
-    status: "Active",
-    date: "Jul 25, 2026"
-  }
-];
-
-const ALL_TUITION_POSTS = [...MOCK_TUITION_POSTS, ...EXTRA_TUITION_POSTS];
-
 export default function TuitionsClient() {
   // Main Data State
-  const [posts, setPosts] = useState<TuitionPost[]>(ALL_TUITION_POSTS);
+  const [posts, setPosts] = useState<TuitionPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState<boolean>(true);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,6 +75,41 @@ export default function TuitionsClient() {
   const [bidAmount, setBidAmount] = useState<string>("");
   const [proposalText, setProposalText] = useState<string>("");
   const [showSuccessToast, setShowSuccessToast] = useState<boolean>(false);
+
+  // Fetch live tuition posts from backend
+  useEffect(() => {
+    const fetchPublicPosts = async () => {
+      try {
+        setLoadingPosts(true);
+        const res = await api.get("/tuitions?status=Active");
+        const raw = res.data?.data || [];
+        const formatted: TuitionPost[] = raw.map((p: any) => ({
+          id: p.id,
+          classLevel: p.classLevel,
+          subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
+          budget: p.budget,
+          mode: p.mode,
+          frequency: p.frequency,
+          location: p.location,
+          status: p.status,
+          date: p.createdAt
+            ? new Date(p.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+              })
+            : "Recently",
+        }));
+        setPosts(formatted);
+      } catch (err) {
+        console.error("Failed to load public tuition posts:", err);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    fetchPublicPosts();
+  }, []);
 
   // Loading state simulation on filter changes
   useEffect(() => {

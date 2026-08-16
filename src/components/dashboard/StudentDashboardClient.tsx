@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -10,18 +11,23 @@ import {
   Check,
   X,
   TrendingUp,
-  Star,
   Info,
   CalendarDays,
-  Search,
-  ArrowLeft,
-  Send,
   FileText,
-  Plus
+  Plus,
+  Edit3,
+  Trash2,
+  Pause,
+  Play,
+  Sparkles,
+  AlertTriangle,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
+import api from "@/lib/api";
+import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import {
-  MOCK_TUITION_POSTS,
   MOCK_TUTOR_APPLICATIONS,
   MOCK_INVOICES,
   MOCK_CHATS,
@@ -37,67 +43,331 @@ export default function StudentDashboardClient() {
   const router = useRouter();
   const currentTab = searchParams.get("tab") || "overview";
 
-  // Dynamic States
-  const [posts, setPosts] = useState<TuitionPost[]>(MOCK_TUITION_POSTS);
+  // Dynamic States from Backend
+  const [posts, setPosts] = useState<TuitionPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Other dynamic/interactive tab states
   const [applications, setApplications] = useState<TutorApplication[]>(MOCK_TUTOR_APPLICATIONS);
   const [invoices] = useState<Invoice[]>(MOCK_INVOICES);
   const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
   
   const [activeChatId, setActiveChatId] = useState<string>("chat-1");
   const [newMessageText, setNewMessageText] = useState<string>("");
-  const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
 
-  // Post tuition state
+  // Post Tuition Form & Modal States
   const [showPostModal, setShowPostModal] = useState<boolean>(false);
-  const [newClassLevel, setNewClassLevel] = useState<string>("");
-  const [newSubjects, setNewSubjects] = useState<string>("");
-  const [newBudget, setNewBudget] = useState<string>("");
-  const [newMode, setNewMode] = useState<"Home" | "Online" | "Both">("Home");
-  const [newFrequency, setNewFrequency] = useState<string>("3 Days / Week");
-  const [newLocation, setNewLocation] = useState<string>("");
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
-  // Actions
-  const handleCreatePost = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClassLevel || !newSubjects || !newBudget || !newLocation) return;
+  // Form Fields
+  const [classLevel, setClassLevel] = useState<string>("");
+  const [subjects, setSubjects] = useState<string>("");
+  const [budget, setBudget] = useState<string>("");
+  const [mode, setMode] = useState<"Home" | "Online" | "Both">("Home");
+  const [frequency, setFrequency] = useState<string>("3 Days / Week");
+  const [location, setLocation] = useState<string>("");
+  const [genderPreference, setGenderPreference] = useState<string>("Any");
+  const [extraNotes, setExtraNotes] = useState<string>("");
 
-    const newPost: TuitionPost = {
-      id: `post-${Date.now()}`,
-      classLevel: newClassLevel,
-      subjects: newSubjects.split(",").map((s) => s.trim()),
-      budget: parseInt(newBudget) || 5000,
-      mode: newMode,
-      frequency: newFrequency,
-      location: newLocation,
-      status: "Active",
-      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+  // Confirmation Modal state when publishing
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+
+  // Delete Confirmation Modal state
+  const [deleteModalConfig, setDeleteModalConfig] = useState<{
+    isOpen: boolean;
+    postId: string | null;
+    postTitle: string;
+  }>({
+    isOpen: false,
+    postId: null,
+    postTitle: "",
+  });
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setToastMessage({ type, text });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  // Fetch student's tuition posts from backend
+  const fetchMyPosts = useCallback(async () => {
+    setLoadingPosts(true);
+    try {
+      const response = await api.get("/tuitions/my-posts");
+      const rawPosts = response.data?.data || [];
+
+      const formatted: TuitionPost[] = rawPosts.map((p: any) => ({
+        id: p.id,
+        classLevel: p.classLevel,
+        subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
+        budget: p.budget,
+        mode: p.mode,
+        frequency: p.frequency,
+        location: p.location,
+        status: p.status,
+        date: p.createdAt
+          ? new Date(p.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "2-digit",
+            })
+          : "Recently",
+      }));
+
+      setPosts(formatted);
+    } catch (err: any) {
+      console.error("Failed to load tuition posts:", err);
+      showToast("error", err?.response?.data?.message || "Failed to load tuition posts from server.");
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadPosts = async () => {
+      try {
+        const response = await api.get("/tuitions/my-posts");
+        if (ignore) return;
+        const rawPosts = response.data?.data || [];
+
+        const formatted: TuitionPost[] = rawPosts.map((p: any) => ({
+          id: p.id,
+          classLevel: p.classLevel,
+          subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
+          budget: p.budget,
+          mode: p.mode,
+          frequency: p.frequency,
+          location: p.location,
+          status: p.status,
+          date: p.createdAt
+            ? new Date(p.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+              })
+            : "Recently",
+        }));
+
+        setPosts(formatted);
+      } catch (err: any) {
+        if (ignore) return;
+        console.error("Failed to load tuition posts:", err);
+        showToast("error", err?.response?.data?.message || "Failed to load tuition posts from server.");
+      } finally {
+        if (!ignore) {
+          setLoadingPosts(false);
+        }
+      }
     };
 
-    setPosts((prev) => [newPost, ...prev]);
-    setShowPostModal(false);
-    
-    // Reset Form
-    setNewClassLevel("");
-    setNewSubjects("");
-    setNewBudget("");
-    setNewMode("Home");
-    setNewLocation("");
-    
-    alert("Success! Your tuition requirement has been posted. Tutors will start applying soon.");
+    loadPosts();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // Open Create Form
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setEditingPostId(null);
+    setClassLevel("");
+    setSubjects("");
+    setBudget("");
+    setMode("Home");
+    setFrequency("3 Days / Week");
+    setLocation("");
+    setGenderPreference("Any");
+    setExtraNotes("");
+    setShowPostModal(true);
+  };
+
+  // Open Edit Form
+  const handleOpenEditModal = (post: TuitionPost) => {
+    setIsEditing(true);
+    setEditingPostId(post.id);
+    setClassLevel(post.classLevel);
+    setSubjects(post.subjects.join(", "));
+    setBudget(post.budget.toString());
+    setMode(post.mode);
+    setFrequency(post.frequency);
+    setLocation(post.location);
+    setGenderPreference("Any");
+    setExtraNotes("");
+    setShowPostModal(true);
+  };
+
+  // Step 1: Pre-validate and show confirmation modal
+  const handleProceedToConfirmation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!classLevel.trim() || !subjects.trim() || !budget.trim() || !location.trim()) {
+      showToast("error", "Please fill in all required fields.");
+      return;
+    }
+
+    if (isEditing) {
+      // In edit mode, save directly or confirm
+      handleSaveEditPost();
+    } else {
+      // In create mode, display detailed confirmation preview
+      setShowPostModal(false);
+      setShowConfirmModal(true);
+    }
+  };
+
+  // Step 2: Final submit to backend (Create)
+  const handleConfirmCreatePost = async () => {
+    try {
+      setActionLoading(true);
+      const payload = {
+        title: classLevel.trim(),
+        classLevel: classLevel.trim(),
+        subjects: subjects.split(",").map((s) => s.trim()).filter(Boolean),
+        budget: parseInt(budget, 10),
+        mode,
+        frequency,
+        location: location.trim(),
+        genderPreference,
+        extraNotes: extraNotes.trim() || undefined,
+      };
+
+      const response = await api.post("/tuitions", payload);
+      const newCreated = response.data?.data;
+
+      if (newCreated) {
+        const formattedNew: TuitionPost = {
+          id: newCreated.id,
+          classLevel: newCreated.classLevel,
+          subjects: newCreated.subjects,
+          budget: newCreated.budget,
+          mode: newCreated.mode,
+          frequency: newCreated.frequency,
+          location: newCreated.location,
+          status: newCreated.status,
+          date: "Just Now",
+        };
+        setPosts((prev) => [formattedNew, ...prev]);
+      } else {
+        await fetchMyPosts();
+      }
+
+      setShowConfirmModal(false);
+      showToast("success", "Tuition requirement posted successfully! Tutors can now view and apply.");
+    } catch (err: any) {
+      console.error("Error creating tuition post:", err);
+      showToast("error", err?.response?.data?.message || "Failed to post tuition requirement.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Step 2 (Edit): Update post in backend
+  const handleSaveEditPost = async () => {
+    if (!editingPostId) return;
+    try {
+      setActionLoading(true);
+      const payload = {
+        title: classLevel.trim(),
+        classLevel: classLevel.trim(),
+        subjects: subjects.split(",").map((s) => s.trim()).filter(Boolean),
+        budget: parseInt(budget, 10),
+        mode,
+        frequency,
+        location: location.trim(),
+        genderPreference,
+        extraNotes: extraNotes.trim() || undefined,
+      };
+
+      const response = await api.patch(`/tuitions/${editingPostId}`, payload);
+      const updated = response.data?.data;
+
+      if (updated) {
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === editingPostId
+              ? {
+                  ...p,
+                  classLevel: updated.classLevel,
+                  subjects: updated.subjects,
+                  budget: updated.budget,
+                  mode: updated.mode,
+                  frequency: updated.frequency,
+                  location: updated.location,
+                  status: updated.status,
+                }
+              : p
+          )
+        );
+      } else {
+        await fetchMyPosts();
+      }
+
+      setShowPostModal(false);
+      showToast("success", "Tuition post updated successfully!");
+    } catch (err: any) {
+      console.error("Error updating tuition post:", err);
+      showToast("error", err?.response?.data?.message || "Failed to update tuition post.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Toggle Status (Pause / Resume)
+  const handleToggleStatus = async (post: TuitionPost) => {
+    const newStatus = post.status === "Active" ? "Paused" : "Active";
+    try {
+      // Optimistic update
+      setPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, status: newStatus } : p))
+      );
+
+      await api.patch(`/tuitions/${post.id}/status`, { status: newStatus });
+      showToast("success", `Tuition post has been ${newStatus.toLowerCase()}.`);
+    } catch (err: any) {
+      // Rollback on error
+      fetchMyPosts();
+      showToast("error", err?.response?.data?.message || "Failed to update status.");
+    }
+  };
+
+  // Open Delete Confirmation
+  const handlePromptDelete = (post: TuitionPost) => {
+    setDeleteModalConfig({
+      isOpen: true,
+      postId: post.id,
+      postTitle: post.classLevel,
+    });
+  };
+
+  // Execute Delete
+  const handleConfirmDelete = async () => {
+    if (!deleteModalConfig.postId) return;
+    try {
+      setActionLoading(true);
+      await api.delete(`/tuitions/${deleteModalConfig.postId}`);
+      setPosts((prev) => prev.filter((p) => p.id !== deleteModalConfig.postId));
+      setDeleteModalConfig({ isOpen: false, postId: null, postTitle: "" });
+      showToast("success", "Tuition post deleted successfully.");
+    } catch (err: any) {
+      console.error("Error deleting post:", err);
+      showToast("error", err?.response?.data?.message || "Failed to delete tuition post.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleHireTutor = (app: TutorApplication) => {
-    // 1. Update application status
     setApplications((prev) =>
       prev.map((a) => (a.id === app.id ? { ...a, status: "Hired" as const } : a))
     );
-    alert(`Congratulations! You have hired ${app.tutorName}. Their class tracker has been activated.`);
-  };
-
-  const handleRejectTutor = (id: string) => {
-    setApplications((prev) => prev.filter((a) => a.id !== id));
-    alert("Application rejected.");
+    showToast("success", `Congratulations! You have hired ${app.tutorName}. Their class tracker has been activated.`);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -131,6 +401,22 @@ export default function StudentDashboardClient() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border text-sm font-bold animate-in slide-in-from-top-4 duration-200 ${
+          toastMessage.type === "success"
+            ? "bg-emerald-50 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800"
+            : "bg-rose-50 dark:bg-rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800"
+        }`}>
+          {toastMessage.type === "success" ? (
+            <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -153,13 +439,23 @@ export default function StudentDashboardClient() {
         </div>
 
         {currentTab === "posts" && (
-          <button
-            onClick={() => setShowPostModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Post Tuition Job</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchMyPosts}
+              disabled={loadingPosts}
+              title="Refresh posts"
+              className="p-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingPosts ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-2 px-5 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Post Tuition Job</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -186,7 +482,7 @@ export default function StudentDashboardClient() {
             </div>
           </div>
 
-          {/* Stat 2: Open Posts */}
+          {/* Stat 2: Open Posts (Dynamic Count from Backend) */}
           <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">
@@ -198,7 +494,7 @@ export default function StudentDashboardClient() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-                {posts.filter((p) => p.status === "Active").length}
+                {loadingPosts ? "..." : posts.filter((p) => p.status === "Active").length}
               </span>
               <div className="mt-2 text-xs font-bold text-zinc-400">
                 Active job vacancies
@@ -367,75 +663,141 @@ export default function StudentDashboardClient() {
         </div>
       )}
 
-      {/* --- PANEL 2: MY TUITION POSTS --- */}
+      {/* --- PANEL 2: MY TUITION POSTS (FULLY DYNAMIC FROM BACKEND) --- */}
       {currentTab === "posts" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs">
-          <div className="space-y-6">
-            {posts.map((post) => (
-              <div key={post.id} className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-base font-black text-zinc-900 dark:text-white">
-                      {post.classLevel}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                      post.status === "Active"
-                        ? "bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e]"
-                        : "bg-zinc-100 dark:bg-zinc-900 text-zinc-500"
-                    }`}>
-                      {post.status}
-                    </span>
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
+          
+          {/* Posts List Loading State */}
+          {loadingPosts && (
+            <div className="space-y-4 py-6">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="p-6 bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl animate-pulse flex flex-col md:flex-row justify-between gap-6">
+                  <div className="space-y-3 flex-1">
+                    <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded-md w-1/3"></div>
+                    <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded-md w-2/3"></div>
+                  </div>
+                  <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-md w-28"></div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Posts List */}
+          {!loadingPosts && (
+            <div className="space-y-6">
+              {posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-zinc-300 dark:hover:border-zinc-750 transition-all duration-200"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-base font-black text-zinc-900 dark:text-white">
+                        {post.classLevel}
+                      </h3>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                          post.status === "Active"
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e]"
+                            : "bg-zinc-100 dark:bg-zinc-900 text-zinc-500"
+                        }`}
+                      >
+                        {post.status}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-y-2 gap-x-6 text-xs font-semibold text-zinc-550 dark:text-zinc-400">
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-zinc-400" />
+                        {post.location}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen className="w-4 h-4 text-zinc-400" />
+                        {post.subjects.join(", ")}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-zinc-400" />
+                        {post.frequency} &bull; {post.mode}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-y-2 gap-x-6 text-xs font-semibold text-zinc-550 dark:text-zinc-400">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-zinc-400" />
-                      {post.location}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <BookOpen className="w-4 h-4 text-zinc-400" />
-                      {post.subjects.join(", ")}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-zinc-400" />
-                      {post.frequency} &bull; {post.mode}
-                    </span>
-                  </div>
-                </div>
+                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 border-t md:border-t-0 border-zinc-100 dark:border-zinc-900 pt-4 md:pt-0">
+                    <div className="text-left md:text-right">
+                      <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block uppercase font-bold tracking-wider">
+                        Budget Range
+                      </span>
+                      <span className="text-base font-black text-[#0F5B47] dark:text-[#188c6e]">
+                        ৳ {post.budget.toLocaleString()}/mo
+                      </span>
+                    </div>
+                    
+                    {/* Action buttons: Pause/Resume + EDIT + Delete */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStatus(post)}
+                        className="flex items-center gap-1 px-3 py-1.5 border border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
+                        title={post.status === "Active" ? "Pause applications" : "Resume applications"}
+                      >
+                        {post.status === "Active" ? (
+                          <>
+                            <Pause className="w-3 h-3 text-amber-500" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3 text-emerald-500" />
+                            <span>Resume</span>
+                          </>
+                        )}
+                      </button>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 border-t md:border-t-0 border-zinc-100 dark:border-zinc-900 pt-4 md:pt-0">
-                  <div className="text-left md:text-right">
-                    <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block uppercase font-bold tracking-wider">
-                      Budget Range
-                    </span>
-                    <span className="text-base font-black text-[#0F5B47] dark:text-[#188c6e]">
-                      ৳ {post.budget.toLocaleString()}/mo
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPosts((prev) => prev.map(p => p.id === post.id ? { ...p, status: p.status === "Active" ? "Paused" as const : "Active" as const } : p))}
-                      className="px-3 py-1.5 border border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-650 dark:text-zinc-450 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
-                    >
-                      {post.status === "Active" ? "Pause" : "Resume"}
-                    </button>
-                    <button
-                      onClick={() => setPosts((prev) => prev.filter(p => p.id !== post.id))}
-                      className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 hover:bg-rose-100 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
-                    >
-                      Delete
-                    </button>
+                      <button
+                        onClick={() => handleOpenEditModal(post)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
+                        title="Edit post details"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => handlePromptDelete(post)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
+                        title="Delete post"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {posts.length === 0 && (
-              <div className="text-center py-12 text-zinc-400 text-sm font-semibold">
-                You haven&apos;t published any tuition job postings.
-              </div>
-            )}
-          </div>
+              ))}
+
+              {posts.length === 0 && (
+                <div className="text-center py-16 px-4 bg-zinc-50/30 dark:bg-zinc-900/20 border border-dashed border-zinc-200 dark:border-zinc-850 rounded-3xl space-y-4">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 text-[#0F5B47] dark:text-[#188c6e] flex items-center justify-center">
+                    <FileText className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-black text-zinc-900 dark:text-white">
+                      No tuition posts published yet
+                    </h4>
+                    <p className="text-xs font-semibold text-zinc-450 dark:text-zinc-500 max-w-sm mx-auto">
+                      Post your tuition requirement with subjects and budget to start receiving applications from verified tutors.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleOpenCreateModal}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create First Tuition Job</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -449,66 +811,39 @@ export default function StudentDashboardClient() {
                   <div className={`w-12 h-12 rounded-full ${app.avatarBg} text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs`}>
                     {app.tutorName.charAt(0).toUpperCase()}
                   </div>
-                  
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black text-zinc-900 dark:text-white">
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-sm font-black text-zinc-900 dark:text-white">
                         {app.tutorName}
-                      </h3>
-                      <span className="flex items-center gap-0.5 text-xs text-amber-500 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-amber-500" />
-                        {app.rating}
+                      </h4>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                        app.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600" :
+                        app.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e]" :
+                        "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                      }`}>
+                        {app.status}
                       </span>
                     </div>
-                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs font-semibold text-zinc-450 dark:text-zinc-500">
                       {app.institution} &bull; {app.subject}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 border-t md:border-t-0 border-zinc-100 dark:border-zinc-900 pt-4 md:pt-0">
-                  <div className="text-left md:text-right">
-                    <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block uppercase font-bold tracking-wider">
-                      Expected Fee
-                    </span>
-                    <span className="text-base font-black text-[#0F5B47] dark:text-[#188c6e]">
-                      ৳ {app.salaryBid.toLocaleString()}/mo
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {app.status === "Pending" ? (
-                      <>
-                        <button
-                          onClick={() => handleRejectTutor(app.id)}
-                          className="p-2 bg-rose-50 dark:bg-rose-950/20 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/30 rounded-xl transition-all cursor-pointer"
-                        >
-                          <X className="w-4 h-4 stroke-[3px]" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Shortlist redirect to message
-                            setActiveChatId("chat-1");
-                            router.push("/dashboard?tab=messages");
-                          }}
-                          className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-extrabold rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer"
-                        >
-                          Chat
-                        </button>
-                        <button
-                          onClick={() => handleHireTutor(app)}
-                          className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                          <span>Hire</span>
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e] bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1 rounded-xl uppercase tracking-wider">
-                        {app.status}
-                      </span>
-                    )}
-                  </div>
+                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4">
+                  <span className="text-sm font-black text-zinc-900 dark:text-white">
+                    ৳ {app.salaryBid.toLocaleString()}/mo
+                  </span>
+                  {app.status === "Pending" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleHireTutor(app)}
+                        className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
+                      >
+                        Hire Tutor
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -518,253 +853,115 @@ export default function StudentDashboardClient() {
 
       {/* --- PANEL 4: MESSAGES --- */}
       {currentTab === "messages" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs flex h-[70vh] min-h-125 max-h-170 transition-colors duration-300">
-          
-          {/* Left: Chat Contacts List */}
-          <div className={`${
-            chatMobileView === "chat" ? "hidden" : "flex"
-          } md:flex w-full md:w-80 border-r border-zinc-150/80 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950`}>
-            
-            {/* Search Header */}
-            <div className="p-4 border-b border-zinc-150/60 dark:border-zinc-900 space-y-3 shrink-0">
-              <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
-                Conversations
-              </h3>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search tutors..."
-                  value={chatSearch}
-                  onChange={(e) => setChatSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-800 dark:text-white transition-all duration-200"
-                />
-                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
-            </div>
-
-            {/* Contacts loop */}
-            <div className="flex-1 overflow-y-auto divide-y divide-zinc-100/50 dark:divide-zinc-900/40">
-              {chats
-                .filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase()))
-                .map((chat) => {
-                  const isActive = chat.id === activeChatId;
-                  return (
-                    <button
-                      key={chat.id}
-                      onClick={() => {
-                        setActiveChatId(chat.id);
-                        setChatMobileView("chat");
-                        setChats((prev) =>
-                          prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
-                        );
-                      }}
-                      className={`w-full text-left p-4 flex gap-3 items-center transition-all duration-200 border-l-4 cursor-pointer ${
-                        isActive
-                          ? "bg-[#0F5B47]/5 dark:bg-[#188c6e]/5 border-[#0F5B47] dark:border-[#188c6e]"
-                          : "border-transparent hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30"
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full ${chat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
-                        {chat.studentName.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h4 className="text-xs text-zinc-850 dark:text-white leading-tight font-black">
-                            {chat.studentName}
-                          </h4>
-                          <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-555 shrink-0">
-                            {chat.time}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-500 truncate leading-normal">
-                          {chat.lastMessage}
-                        </p>
-                      </div>
-
-                      {chat.unreadCount > 0 && (
-                        <span className="w-4.5 h-4.5 rounded-full bg-[#F26A1B] text-white text-[8px] font-black flex items-center justify-center shrink-0">
-                          {chat.unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              {chats.filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase())).length === 0 && (
-                <div className="text-center py-12 text-zinc-400 text-xs font-semibold">
-                  No conversations found.
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs grid grid-cols-1 md:grid-cols-12 min-h-137.5">
+          {/* Chat list */}
+          <div className="md:col-span-4 border-r border-zinc-100 dark:border-zinc-900 p-4 space-y-4">
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={chatSearch}
+              onChange={(e) => setChatSearch(e.target.value)}
+              className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+            />
+            <div className="space-y-2">
+              {chats.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => setActiveChatId(c.id)}
+                  className={`p-3 rounded-2xl cursor-pointer transition-colors flex items-center gap-3 ${
+                    activeChatId === c.id
+                      ? "bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 border border-[#0F5B47]/20 dark:border-[#188c6e]/20"
+                      : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full ${c.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs`}>
+                    {c.studentName.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white truncate">
+                      {c.studentName}
+                    </h4>
+                    <p className="text-[10px] font-medium text-zinc-450 dark:text-zinc-500 truncate mt-0.5">
+                      {c.lastMessage}
+                    </p>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 
-          {/* Right: Active Chat conversation box */}
-          {(() => {
-            const activeChat = chats.find((c) => c.id === activeChatId);
-            if (!activeChat) {
-              return (
-                <div className="flex-1 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold">
-                  Select a chat conversation to start messaging.
-                </div>
-              );
-            }
-
-            return (
-              <div className={`${
-                chatMobileView === "list" ? "hidden" : "flex"
-              } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
-                
-                {/* Active Chat Header */}
-                <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center gap-3 shrink-0">
-                  <button
-                    onClick={() => setChatMobileView("list")}
-                    className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
-                  >
-                    <ArrowLeft className="w-4 h-4 stroke-[3px]" />
-                  </button>
-                  <div className={`w-9 h-9 rounded-full ${activeChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0`}>
-                    {activeChat.studentName.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-zinc-850 dark:text-white leading-tight font-extrabold">
-                      {activeChat.studentName}
-                    </h4>
-                    <span className="text-[9px] text-[#0F5B47] dark:text-[#188c6e] font-black uppercase tracking-wider block mt-0.5">
-                      Online &bull; Tutor
-                    </span>
-                  </div>
-                </div>
-
-                {/* Messages logs area */}
-                <div className="flex-1 overflow-y-auto p-4 flex flex-col">
-                  <div className="space-y-4 mt-auto">
-                    {activeChat.messages.map((msg) => {
-                      const isStudent = msg.sender === "student";
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex ${isStudent ? "justify-end" : "justify-start"} items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300`}
-                        >
-                          {!isStudent && (
-                            <div className={`w-6 h-6 rounded-full ${activeChat.avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-xs mb-1`}>
-                              {activeChat.studentName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="max-w-[75%] space-y-1">
-                            <div
-                              className={`p-3.5 rounded-2xl text-xs font-semibold leading-relaxed ${
-                                isStudent
-                                  ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none shadow-xs"
-                                  : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-none shadow-3xs"
-                              }`}
-                            >
-                              {msg.content}
-                            </div>
-                            <span className={`text-[8px] font-bold text-zinc-400 block ${isStudent ? "text-right" : "text-left"}`}>
-                              {msg.time}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Bottom Input Area */}
-                <form
-                  onSubmit={handleSendMessage}
-                  className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+          {/* Active Chat Conversation */}
+          <div className="md:col-span-8 flex flex-col justify-between p-6">
+            <div className="space-y-4 overflow-y-auto max-h-100">
+              {chats.find(c => c.id === activeChatId)?.messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${m.sender === "student" ? "items-end" : "items-start"}`}
                 >
-                  <input
-                    type="text"
-                    placeholder="Write a message..."
-                    value={newMessageText}
-                    onChange={(e) => setNewMessageText(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-850 dark:text-white transition-all duration-200"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
-                    title="Send Message"
+                  <div
+                    className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold ${
+                      m.sender === "student"
+                        ? "bg-[#0F5B47] text-white rounded-br-xs"
+                        : "bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
+                    }`}
                   >
-                    <Send className="w-4 h-4 text-white" />
-                  </button>
-                </form>
+                    {m.content}
+                  </div>
+                  <span className="text-[9px] font-bold text-zinc-400 mt-1 px-1">{m.time}</span>
+                </div>
+              ))}
+            </div>
 
-              </div>
-            );
-          })()}
-
+            <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={newMessageText}
+                onChange={(e) => setNewMessageText(e.target.value)}
+                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+              />
+              <button
+                type="submit"
+                className="px-5 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-xs font-extrabold uppercase rounded-xl transition-colors cursor-pointer"
+              >
+                Send
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
       {/* --- PANEL 5: ACTIVE TUTORS --- */}
       {currentTab === "active-tutors" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs">
-          <div className="space-y-6">
-            <div className="p-6 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex flex-col gap-4 animate-in fade-in duration-200">
-              
-              {/* Header profile */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-150/30 dark:border-zinc-900/40">
-                <div className="space-y-1">
-                  <h3 className="text-base font-black text-zinc-900 dark:text-white">
-                    Zara Tabassum
-                  </h3>
-                  <p className="text-xs font-semibold text-zinc-550 dark:text-zinc-400">
-                    Chemistry &bull; HSC (1st Year)
-                  </p>
-                </div>
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
+          <h3 className="text-lg font-black text-zinc-900 dark:text-white pb-4 border-b border-zinc-100 dark:border-zinc-900">
+            Hired & Active Educators
+          </h3>
+          <div className="space-y-4">
+            <div className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e] text-[9px] font-extrabold uppercase">
-                    Active
-                  </span>
-                  <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">
-                    ৳ 8,000/mo
-                  </span>
+                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold text-xs flex items-center justify-center">
+                    Z
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-zinc-900 dark:text-white">Zara Tabassum</h4>
+                    <p className="text-xs font-bold text-zinc-450">Chemistry &bull; HSC (1st Year)</p>
+                  </div>
                 </div>
+                <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e]">৳ 8,000/mo</span>
               </div>
-
-              {/* Details grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-semibold text-zinc-550 dark:text-zinc-400">
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-450 dark:text-zinc-500 uppercase font-bold tracking-wider">
-                    Schedule Details
-                  </span>
-                  <p className="text-zinc-850 dark:text-zinc-200">
-                    3 Days / Week (Home)
-                  </p>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-450 dark:text-zinc-555 uppercase font-bold tracking-wider">
-                    Start Date
-                  </span>
-                  <p className="text-zinc-850 dark:text-zinc-200">
-                    Mar 01, 2026
-                  </p>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-450 dark:text-zinc-555 uppercase font-bold tracking-wider">
-                    Next Session
-                  </span>
-                  <p className="text-[#0F5B47] dark:text-[#188c6e] font-bold">
-                    Tomorrow at 4:30 PM
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="bg-blue-50/20 dark:bg-blue-955/5 border border-blue-100/50 dark:border-blue-900/10 p-4 rounded-xl flex gap-3 items-start mt-2">
+              <div className="bg-blue-50/20 dark:bg-blue-955/5 border border-blue-100/50 dark:border-blue-900/10 p-4 rounded-xl flex gap-3 items-start">
                 <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <span className="text-[10px] text-blue-800 dark:text-blue-400 uppercase font-bold tracking-wider">
-                    Tutor Progress logs
+                    Tutor Progress Logs
                   </span>
-                  <p className="text-xs text-zinc-650 dark:text-zinc-450 leading-relaxed font-semibold">
-                    Chemical Bonds completed. Started Organic Chemistry basic concepts. Preparing for weekly test.
+                  <p className="text-xs text-zinc-650 dark:text-zinc-450 font-semibold leading-relaxed">
+                    Chemical Bonds completed. Started Organic Chemistry basic concepts. Preparing for weekly model test.
                   </p>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -776,7 +973,6 @@ export default function StudentDashboardClient() {
           <h3 className="text-lg font-black text-zinc-900 dark:text-white pb-4 border-b border-zinc-100 dark:border-zinc-900">
             Payment Receipts
           </h3>
-          
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -814,79 +1010,105 @@ export default function StudentDashboardClient() {
         </div>
       )}
 
-      {/* --- POST JOB MODAL --- */}
+      {/* ========================================================================= */}
+      {/* 1. POST / EDIT TUITION FORM MODAL */}
+      {/* ========================================================================= */}
       {showPostModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] shadow-2xl p-6 md:p-8 w-full max-w-lg mx-auto space-y-6 animate-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setShowPostModal(false)}
+          />
+
+          <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] shadow-2xl p-6 md:p-8 w-full max-w-lg mx-auto space-y-6 z-10 animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight">
-                Post a Tuition Job
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 text-[#0F5B47] dark:text-[#188c6e] flex items-center justify-center">
+                  {isEditing ? <Edit3 className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                    {isEditing ? "Edit Tuition Job" : "Post a Tuition Job"}
+                  </h3>
+                  <p className="text-[11px] font-semibold text-zinc-400">
+                    {isEditing ? "Update your requirements and salary budget" : "Specify your class, subjects, and preferences"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowPostModal(false)}
-                className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 cursor-pointer"
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} className="space-y-4 text-xs font-bold">
+            <form onSubmit={handleProceedToConfirmation} className="space-y-4 text-xs font-bold">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Class Level</label>
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
+                    <span>Class Level</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Class 10 (SSC)"
-                    value={newClassLevel}
-                    onChange={(e) => setNewClassLevel(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                    value={classLevel}
+                    onChange={(e) => setClassLevel(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Salary Budget (BDT/mo)</label>
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
+                    <span>Salary Budget (৳/mo)</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="number"
                     placeholder="e.g. 5000"
-                    value={newBudget}
-                    onChange={(e) => setNewBudget(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Subjects (Comma separated)</label>
+              <div className="space-y-1.5">
+                <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
+                  <span>Subjects (Comma separated)</span>
+                  <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Mathematics, Physics, Chemistry"
-                  value={newSubjects}
-                  onChange={(e) => setNewSubjects(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                  placeholder="e.g. Mathematics, Higher Mathematics, Physics"
+                  value={subjects}
+                  onChange={(e) => setSubjects(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Tuition Mode</label>
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">Tuition Mode</label>
                   <select
-                    value={newMode}
-                    onChange={(e) => setNewMode(e.target.value as "Home" | "Online" | "Both")}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer"
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as "Home" | "Online" | "Both")}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer transition-colors"
                   >
                     <option value="Home">In-Person (Home)</option>
                     <option value="Online">Online</option>
                     <option value="Both">Both (Hybrid)</option>
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Weekly Frequency</label>
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">Weekly Frequency</label>
                   <select
-                    value={newFrequency}
-                    onChange={(e) => setNewFrequency(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer"
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer transition-colors"
                   >
                     <option value="1 Day / Week">1 Day / Week</option>
                     <option value="2 Days / Week">2 Days / Week</option>
@@ -897,37 +1119,233 @@ export default function StudentDashboardClient() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">Location Address</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dhanmondi, Dhaka"
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
-                  required
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1">
+                    <span>Location Address</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dhanmondi, Dhaka"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">Tutor Gender Preference</label>
+                  <select
+                    value={genderPreference}
+                    onChange={(e) => setGenderPreference(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer transition-colors"
+                  >
+                    <option value="Any">Any Gender</option>
+                    <option value="Male">Male Tutor Preferred</option>
+                    <option value="Female">Female Tutor Preferred</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">Special Requirements / Notes (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Need teacher with strong background in Cambridge/Edexcel curriculum..."
+                  value={extraNotes}
+                  onChange={(e) => setExtraNotes(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors resize-none"
                 />
               </div>
 
-              <div className="pt-4 flex justify-end gap-2">
+              <div className="pt-4 flex justify-end gap-3 border-t border-zinc-100 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setShowPostModal(false)}
-                  className="px-5 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="px-5 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold uppercase tracking-wide rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Submit Requirement
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : isEditing ? (
+                    <span>Save Changes</span>
+                  ) : (
+                    <span>Review & Post &rarr;</span>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 2. POST CONFIRMATION PREVIEW MODAL */}
+      {/* ========================================================================= */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/65 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+            onClick={() => !actionLoading && setShowConfirmModal(false)}
+          />
+
+          <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] shadow-2xl p-6 md:p-8 w-full max-w-lg mx-auto space-y-6 z-10 animate-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0F5B47] dark:text-[#188c6e] flex items-center justify-center">
+                  <Check className="w-5 h-5 stroke-[3px]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                    Confirm Tuition Post
+                  </h3>
+                  <p className="text-xs font-semibold text-zinc-400">
+                    Review your requirement details before publishing
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !actionLoading && setShowConfirmModal(false)}
+                disabled={actionLoading}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl text-zinc-400 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Preview Card */}
+            <div className="p-5 bg-zinc-50/70 dark:bg-zinc-850/50 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#0F5B47] dark:text-[#188c6e]">
+                    Class / Grade
+                  </span>
+                  <h4 className="text-base font-black text-zinc-900 dark:text-white mt-0.5">
+                    {classLevel}
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    Monthly Salary
+                  </span>
+                  <p className="text-base font-black text-[#0F5B47] dark:text-[#188c6e] mt-0.5">
+                    ৳ {parseInt(budget || "0", 10).toLocaleString()} <span className="text-[10px] font-bold text-zinc-400">/mo</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Subject Badges */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Required Subjects:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {subjects.split(",").map((s) => s.trim()).filter(Boolean).map((sub, i) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-lg shadow-2xs"
+                    >
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-800 text-xs">
+                <div className="flex items-center gap-2 text-zinc-650 dark:text-zinc-350 font-semibold">
+                  <MapPin className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                  <span className="truncate">{location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-650 dark:text-zinc-350 font-semibold">
+                  <Clock className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                  <span>{frequency}</span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-650 dark:text-zinc-350 font-semibold">
+                  <BookOpen className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                  <span>{mode} Mode</span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-650 dark:text-zinc-350 font-semibold">
+                  <Users className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                  <span>{genderPreference} Gender</span>
+                </div>
+              </div>
+
+              {extraNotes && (
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800 text-xs text-zinc-500 font-medium">
+                  <span className="font-bold text-zinc-700 dark:text-zinc-300">Note: </span>
+                  {extraNotes}
+                </div>
+              )}
+            </div>
+
+            {/* Alert note */}
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+              <Info className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Verified educators matching this requirement will immediately receive notifications.</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setShowPostModal(true);
+                }}
+                disabled={actionLoading}
+                className="px-5 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                &larr; Back to Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmCreatePost}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Publishing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3px]" />
+                    <span>Confirm & Publish</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. DELETE CONFIRMATION MODAL */}
+      {/* ========================================================================= */}
+      <ConfirmationModal
+        isOpen={deleteModalConfig.isOpen}
+        onClose={() => setDeleteModalConfig({ isOpen: false, postId: null, postTitle: "" })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Tuition Post"
+        message={`Are you sure you want to delete "${deleteModalConfig.postTitle}"? Any existing tutor applications for this job will be archived.`}
+        confirmText="Delete Post"
+        variant="danger"
+        isLoading={actionLoading}
+      />
 
     </div>
   );
