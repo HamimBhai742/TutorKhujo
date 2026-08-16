@@ -24,7 +24,8 @@ import {
   Clock,
   Send,
   Building,
-  UserCheck
+  UserCheck,
+  Loader2
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { TakaIcon } from "@/components/shared/TakaIcon";
@@ -74,9 +75,11 @@ export default function TuitionsClient() {
   // Application form state
   const [bidAmount, setBidAmount] = useState<string>("");
   const [proposalText, setProposalText] = useState<string>("");
+  const [isSubmittingApply, setIsSubmittingApply] = useState<boolean>(false);
   const [showSuccessToast, setShowSuccessToast] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch live tuition posts from backend
+  // Fetch live tuition posts and tutor's applied posts from backend
   useEffect(() => {
     const fetchPublicPosts = async () => {
       try {
@@ -101,6 +104,15 @@ export default function TuitionsClient() {
             : "Recently",
         }));
         setPosts(formatted);
+
+        // Try to fetch tutor's applied jobs
+        try {
+          const appliedRes = await api.get("/tuitions/tutor/my-applied");
+          const appliedApps = appliedRes.data?.data || [];
+          setAppliedJobIds(appliedApps.map((a: any) => a.tuitionPostId));
+        } catch (_) {
+          // Not logged in as tutor or unauthenticated, ignore silently
+        }
       } catch (err) {
         console.error("Failed to load public tuition posts:", err);
       } finally {
@@ -227,22 +239,39 @@ export default function TuitionsClient() {
     setSelectedJob(job);
     setBidAmount(job.budget.toString());
     setProposalText("");
+    setErrorMessage(null);
     setShowApplyModal(true);
   };
 
-  const handleApplySubmit = (e: React.FormEvent) => {
+  const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedJob) return;
 
-    // Save app in local storage/state
-    setAppliedJobIds((prev) => [...prev, selectedJob.id]);
-    setShowApplyModal(false);
-    setShowSuccessToast(true);
+    try {
+      setIsSubmittingApply(true);
+      setErrorMessage(null);
 
-    // Auto hide toast
-    setTimeout(() => {
-      setShowSuccessToast(false);
-    }, 4000);
+      await api.post(`/tuitions/${selectedJob.id}/apply`, {
+        salaryBid: Number(bidAmount) || selectedJob.budget,
+        proposal: proposalText.trim(),
+      });
+
+      setAppliedJobIds((prev) => [...prev, selectedJob.id]);
+      setShowApplyModal(false);
+      setShowSuccessToast(true);
+
+      setTimeout(() => {
+        setShowSuccessToast(false);
+      }, 4000);
+    } catch (err: any) {
+      console.error("Apply error:", err);
+      const msg =
+        err?.response?.data?.message ||
+        "Failed to submit application. Please make sure you are logged in as a tutor.";
+      setErrorMessage(msg);
+    } finally {
+      setIsSubmittingApply(false);
+    }
   };
 
   // Stats computation
@@ -825,20 +854,37 @@ export default function TuitionsClient() {
                 />
               </div>
 
+              {errorMessage && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-xl">
+                  {errorMessage}
+                </div>
+              )}
+
               <div className="pt-4 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  className="px-5 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  disabled={isSubmittingApply}
+                  className="px-5 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-[#F26A1B] hover:bg-[#db5b14] text-white rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  disabled={isSubmittingApply}
+                  className="px-6 py-3 bg-[#F26A1B] hover:bg-[#db5b14] text-white font-black text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-60"
                 >
-                  <Send className="w-3.5 h-3.5 text-white" />
-                  Submit Application
+                  {isSubmittingApply ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5 text-white" />
+                      Submit Application
+                    </>
+                  )}
                 </button>
               </div>
             </form>

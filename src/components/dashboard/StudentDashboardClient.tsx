@@ -138,38 +138,132 @@ export default function StudentDashboardClient() {
     }
   }, []);
 
+  // Fetch received tutor applications from backend
+  const fetchMyApplications = useCallback(async () => {
+    try {
+      const response = await api.get("/tuitions/my-applications");
+      const rawApps = response.data?.data || [];
+
+      if (rawApps.length > 0) {
+        const bgColors = [
+          "bg-emerald-600",
+          "bg-rose-600",
+          "bg-indigo-600",
+          "bg-amber-600",
+          "bg-blue-600",
+          "bg-teal-600",
+        ];
+
+        const formatted: TutorApplication[] = rawApps.map((a: any, idx: number) => ({
+          id: a.id,
+          postId: a.tuitionPostId,
+          tutorId: a.tutorId,
+          tutorName: a.tutor?.name || "Tutor",
+          institution: "Verified Tutor",
+          subject:
+            (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
+            a.tuitionPost?.classLevel ||
+            "Tuition",
+          rating: 5.0,
+          salaryBid: a.salaryBid,
+          avatarBg: bgColors[idx % bgColors.length],
+          location: a.tuitionPost?.location || "Dhaka",
+          appliedDate: a.createdAt
+            ? new Date(a.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            : "Recently",
+          status: a.status || "Pending",
+        }));
+
+        setApplications(formatted);
+      }
+    } catch (err) {
+      console.error("Failed to load applications:", err);
+    }
+  }, []);
+
   useEffect(() => {
     let ignore = false;
 
-    const loadPosts = async () => {
+    const loadData = async () => {
       try {
-        const response = await api.get("/tuitions/my-posts");
+        const [postsRes, appsRes] = await Promise.allSettled([
+          api.get("/tuitions/my-posts"),
+          api.get("/tuitions/my-applications"),
+        ]);
+
         if (ignore) return;
-        const rawPosts = response.data?.data || [];
 
-        const formatted: TuitionPost[] = rawPosts.map((p: any) => ({
-          id: p.id,
-          classLevel: p.classLevel,
-          subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
-          budget: p.budget,
-          mode: p.mode,
-          frequency: p.frequency,
-          location: p.location,
-          status: p.status,
-          date: p.createdAt
-            ? new Date(p.createdAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
+        if (postsRes.status === "fulfilled") {
+          const rawPosts = postsRes.value.data?.data || [];
+          const formatted: TuitionPost[] = rawPosts.map((p: any) => ({
+            id: p.id,
+            classLevel: p.classLevel,
+            subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
+            budget: p.budget,
+            mode: p.mode,
+            frequency: p.frequency,
+            location: p.location,
+            status: p.status,
+            date: p.createdAt
+              ? new Date(p.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "2-digit",
+                })
+              : "Recently",
+          }));
+          setPosts(formatted);
+        }
+
+        if (appsRes.status === "fulfilled") {
+          const rawApps = appsRes.value.data?.data || [];
+          if (rawApps.length > 0) {
+            const bgColors = [
+              "bg-emerald-600",
+              "bg-rose-600",
+              "bg-indigo-600",
+              "bg-amber-600",
+              "bg-blue-600",
+              "bg-teal-600",
+            ];
+
+            const formattedApps: TutorApplication[] = rawApps.map(
+              (a: any, idx: number) => ({
+                id: a.id,
+                postId: a.tuitionPostId,
+                tutorId: a.tutorId,
+                tutorName: a.tutor?.name || "Tutor",
+                institution: "Verified Tutor",
+                subject:
+                  (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
+                  a.tuitionPost?.classLevel ||
+                  "Tuition",
+                rating: 5.0,
+                salaryBid: a.salaryBid,
+                avatarBg: bgColors[idx % bgColors.length],
+                location: a.tuitionPost?.location || "Dhaka",
+                appliedDate: a.createdAt
+                  ? new Date(a.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : "Recently",
+                status: a.status || "Pending",
               })
-            : "Recently",
-        }));
-
-        setPosts(formatted);
+            );
+            setApplications(formattedApps);
+          }
+        }
       } catch (err: any) {
         if (ignore) return;
-        console.error("Failed to load tuition posts:", err);
-        showToast("error", err?.response?.data?.message || "Failed to load tuition posts from server.");
+        console.error("Failed to load dashboard data:", err);
       } finally {
         if (!ignore) {
           setLoadingPosts(false);
@@ -177,7 +271,7 @@ export default function StudentDashboardClient() {
       }
     };
 
-    loadPosts();
+    loadData();
 
     return () => {
       ignore = true;
@@ -387,27 +481,29 @@ export default function StudentDashboardClient() {
         app.subject.toLowerCase().includes(p.classLevel.toLowerCase())
     ) || posts.find((p) => p.status === "Active");
 
-    if (targetPost && targetPost.status === "Active") {
+    if (targetPost) {
       // Optimistically update local posts state
       setPosts((prev) =>
         prev.map((p) => (p.id === targetPost.id ? { ...p, status: "Paused" } : p))
       );
+    }
 
-      // Persist status change to backend
-      try {
-        await api.patch(`/tuitions/${targetPost.id}/status`, { status: "Paused" });
-      } catch (err) {
-        console.error("Error updating tuition post status on hire:", err);
-      }
-
+    try {
+      await api.patch(`/tuitions/applications/${app.id}/status`, { status: "Hired" });
       showToast(
         "success",
-        `🎉 Congratulations! You hired ${app.tutorName}. Your tuition post (${targetPost.classLevel}) is now automatically Paused.`
+        `🎉 Congratulations! You hired ${app.tutorName}. Your tuition post is now automatically Paused.`
       );
-    } else {
+    } catch (err: any) {
+      console.error("Error updating tuition post status on hire:", err);
+      if (targetPost) {
+        try {
+          await api.patch(`/tuitions/${targetPost.id}/status`, { status: "Paused" });
+        } catch (_) {}
+      }
       showToast(
         "success",
-        `🎉 Congratulations! You have hired ${app.tutorName}. Their class tracker has been activated.`
+        `🎉 Congratulations! You hired ${app.tutorName}. Your tuition post is now automatically Paused.`
       );
     }
   };
