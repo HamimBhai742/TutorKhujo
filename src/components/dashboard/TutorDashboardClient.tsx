@@ -25,8 +25,7 @@ import {
   ActiveTuition,
   Payout,
   ChatContact,
-  ChatMessage,
-  MOCK_CHATS
+  ChatMessage
 } from "@/data/dashboard";
 import api from "@/lib/api";
 
@@ -39,13 +38,16 @@ export default function TutorDashboardClient() {
   const [requests, setRequests] = useState<TuitionRequest[]>([]);
   const [activeTuitions, setActiveTuitions] = useState<ActiveTuition[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
-  const [activeChatId, setActiveChatId] = useState<string>("chat-1");
+  const [chats, setChats] = useState<ChatContact[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
+  const [myUserId, setMyUserId] = useState<string>("");
+  const socketRef = React.useRef<any>(null);
 
   // Availability matrix state
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -61,10 +63,11 @@ export default function TutorDashboardClient() {
       setLoading(true);
       setError(null);
 
-      const [applicationsRes, transactionsRes, userRes] = await Promise.all([
+      const [applicationsRes, transactionsRes, userRes, convRes] = await Promise.all([
         api.get("/tuitions/tutor/my-applied"),
         api.get("/payments/my-transactions"),
         api.get("/user/me"),
+        api.get("/messages/conversations"),
       ]);
 
       const applications = applicationsRes.data.data;
@@ -113,6 +116,14 @@ export default function TutorDashboardClient() {
       if (dbAvailability) {
         setAvailability(dbAvailability);
       }
+
+      // 5. Load conversations
+      const conversations = convRes.data.data;
+      setChats(conversations);
+      if (conversations.length > 0) {
+        setActiveChatId(conversations[0].id);
+      }
+      setMyUserId(userRes.data.data.id);
     } catch (err: any) {
       console.error("Error loading tutor dashboard data:", err);
       setError("Failed to retrieve dashboard data.");
@@ -121,7 +132,7 @@ export default function TutorDashboardClient() {
     }
   };
 
-  useEffect(() => {
+   useEffect(() => {
     let active = true;
     Promise.resolve().then(() => {
       if (active) {
@@ -133,32 +144,106 @@ export default function TutorDashboardClient() {
     };
   }, []);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessageText.trim()) return;
+  const fetchMessages = async (convId: string) => {
+    try {
+      setMessagesLoading(true);
+      const res = await api.get(`/messages/${convId}`);
+      setChats((prev) =>
+        prev.map((c) => (c.id === convId ? { ...c, messages: res.data.data } : c))
+      );
+    } catch (err) {
+      console.error("Error loading chat messages:", err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "tutor",
-      content: newMessageText.trim(),
-      time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  useEffect(() => {
+    if (activeChatId) {
+      fetchMessages(activeChatId);
+    }
+  }, [activeChatId]);
+
+  useEffect(() => {
+    if (!myUserId) return;
+
+    import("socket.io-client").then(({ io }) => {
+      const socket = io("http://localhost:5001", {
+        query: { userId: myUserId },
+      });
+      socketRef.current = socket;
+
+      socket.on("incoming_message", (payload: any) => {
+        setChats((prev) =>
+          prev.map((c) => {
+            if (c.id === payload.conversationId) {
+              const updatedMessages = c.id === activeChatId
+                ? [...(c.messages || []), {
+                    id: payload.id,
+                    sender: payload.sender,
+                    content: payload.content,
+                    time: payload.time,
+                  }]
+                : (c.messages || []);
+
+              return {
+                ...c,
+                lastMessage: payload.content,
+                time: payload.time,
+                unreadCount: c.id === activeChatId ? c.unreadCount : c.unreadCount + 1,
+                messages: updatedMessages,
+              };
+            }
+            return c;
+          })
+        );
+      });
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
+  }, [myUserId, activeChatId]);
 
-    setChats((prev) =>
-      prev.map((c) => {
-        if (c.id === activeChatId) {
-          return {
-            ...c,
-            lastMessage: newMessageText.trim(),
-            time: "Just Now",
-            messages: [...c.messages, newMsg]
-          };
-        }
-        return c;
-      })
-    );
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessageText.trim() || !activeChatId) return;
 
+    const textToSend = newMessageText.trim();
     setNewMessageText("");
+
+    try {
+      const res = await api.post("/messages", {
+        conversationId: activeChatId,
+        content: textToSend,
+      });
+
+      const newMsg = {
+        id: res.data.data.id,
+        sender: "tutor",
+        content: textToSend,
+        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      };
+
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id === activeChatId) {
+            return {
+              ...c,
+              lastMessage: textToSend,
+              time: "Just Now",
+              messages: [...(c.messages || []), newMsg],
+            };
+          }
+          return c;
+        })
+      );
+    } catch (err) {
+      console.error("Error sending message:", err);
+      alert("Failed to send message.");
+    }
   };
 
   const handleToggleAvailability = (time: string, day: string) => {

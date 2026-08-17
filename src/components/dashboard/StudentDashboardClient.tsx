@@ -36,8 +36,6 @@ import { TakaIcon } from "@/components/shared/TakaIcon";
 import api from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import {
-  MOCK_TUTOR_APPLICATIONS,
-  MOCK_INVOICES,
   MOCK_CHATS,
   TuitionPost,
   TutorApplication,
@@ -45,7 +43,6 @@ import {
   ChatContact,
   ChatMessage
 } from "@/data/dashboard";
-import { MOCK_TUTORS, Tutor } from "@/data/tutors";
 
 export default function StudentDashboardClient() {
   const searchParams = useSearchParams();
@@ -59,14 +56,17 @@ export default function StudentDashboardClient() {
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Other dynamic/interactive tab states
-  const [applications, setApplications] = useState<TutorApplication[]>(MOCK_TUTOR_APPLICATIONS);
+  const [applications, setApplications] = useState<TutorApplication[]>([]);
   const [selectedApplicant, setSelectedApplicant] = useState<TutorApplication | null>(null);
-  const [invoices] = useState<Invoice[]>(MOCK_INVOICES);
-  const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [chats, setChats] = useState<ChatContact[]>([]);
   
-  const [activeChatId, setActiveChatId] = useState<string>("chat-1");
+  const [activeChatId, setActiveChatId] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatSearch, setChatSearch] = useState<string>("");
+  const [myUserId, setMyUserId] = useState<string>("");
+  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
+  const socketRef = React.useRef<any>(null);
 
   // Post Tuition Form & Modal States
   const [showPostModal, setShowPostModal] = useState<boolean>(false);
@@ -138,18 +138,25 @@ export default function StudentDashboardClient() {
     }
   }, []);
 
-
   useEffect(() => {
     let ignore = false;
 
     const loadData = async () => {
       try {
-        const [postsRes, appsRes] = await Promise.allSettled([
+        const [postsRes, appsRes, txRes, userRes, convRes] = await Promise.allSettled([
           api.get("/tuitions/my-posts"),
           api.get("/tuitions/my-applications"),
+          api.get("/payments/my-transactions"),
+          api.get("/user/me"),
+          api.get("/messages/conversations"),
         ]);
 
         if (ignore) return;
+
+        if (userRes.status === "fulfilled") {
+          const uId = userRes.value.data?.data?.id || "";
+          setMyUserId(uId);
+        }
 
         if (postsRes.status === "fulfilled") {
           const rawPosts = postsRes.value.data?.data || [];
@@ -175,43 +182,63 @@ export default function StudentDashboardClient() {
 
         if (appsRes.status === "fulfilled") {
           const rawApps = appsRes.value.data?.data || [];
-          if (rawApps.length > 0) {
-            const bgColors = [
-              "bg-emerald-600",
-              "bg-rose-600",
-              "bg-indigo-600",
-              "bg-amber-600",
-              "bg-blue-600",
-              "bg-teal-600",
-            ];
+          const bgColors = [
+            "bg-emerald-600",
+            "bg-rose-600",
+            "bg-indigo-600",
+            "bg-amber-600",
+            "bg-blue-600",
+            "bg-teal-600",
+          ];
 
-            const formattedApps: TutorApplication[] = rawApps.map(
-              (a: any, idx: number) => ({
-                id: a.id,
-                postId: a.tuitionPostId,
-                tutorId: a.tutorId,
-                tutorName: a.tutor?.name || "Tutor",
-                institution: "Verified Tutor",
-                subject:
-                  (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
-                  a.tuitionPost?.classLevel ||
-                  "Tuition",
-                rating: 5.0,
-                salaryBid: a.salaryBid,
-                avatarBg: bgColors[idx % bgColors.length],
-                location: a.tuitionPost?.location || "Dhaka",
-                appliedDate: a.createdAt
-                  ? new Date(a.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })
-                  : "Recently",
-                status: a.status || "Pending",
-              })
-            );
-            setApplications(formattedApps);
+          const formattedApps: TutorApplication[] = rawApps.map(
+            (a: any, idx: number) => ({
+              id: a.id,
+              postId: a.tuitionPostId,
+              tutorId: a.tutorId,
+              tutorName: a.tutor?.name || "Tutor",
+              institution: a.tutor?.institution || "Verified Tutor",
+              subject:
+                (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
+                a.tuitionPost?.classLevel ||
+                "Tuition",
+              rating: 5.0,
+              salaryBid: a.salaryBid,
+              avatarBg: bgColors[idx % bgColors.length],
+              location: a.tuitionPost?.location || "Dhaka",
+              appliedDate: a.createdAt
+                ? new Date(a.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "Recently",
+              status: a.status || "Pending",
+            })
+          );
+          setApplications(formattedApps);
+        }
+
+        if (txRes.status === "fulfilled") {
+          const rawTx = txRes.value.data?.data || [];
+          const formattedInvoices = rawTx.map((t: any) => ({
+            id: t.id,
+            billingMonth: new Date(t.date).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+            description: t.description,
+            date: t.date,
+            method: t.method,
+            amount: t.amount,
+            status: t.status,
+          }));
+          setInvoices(formattedInvoices);
+        }
+
+        if (convRes.status === "fulfilled") {
+          const rawConv = convRes.value.data?.data || [];
+          setChats(rawConv);
+          if (rawConv.length > 0) {
+            setActiveChatId(rawConv[0].id);
           }
         }
       } catch (err: any) {
@@ -230,6 +257,69 @@ export default function StudentDashboardClient() {
       ignore = true;
     };
   }, []);
+
+  const fetchMessages = async (convId: string) => {
+    try {
+      setMessagesLoading(true);
+      const res = await api.get(`/messages/${convId}`);
+      setChats((prev) =>
+        prev.map((c) => (c.id === convId ? { ...c, messages: res.data.data } : c))
+      );
+    } catch (err) {
+      console.error("Error loading chat messages:", err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeChatId) {
+      fetchMessages(activeChatId);
+    }
+  }, [activeChatId]);
+
+  useEffect(() => {
+    if (!myUserId) return;
+
+    import("socket.io-client").then(({ io }) => {
+      const socket = io("http://localhost:5001", {
+        query: { userId: myUserId },
+      });
+      socketRef.current = socket;
+
+      socket.on("incoming_message", (payload: any) => {
+        setChats((prev) =>
+          prev.map((c) => {
+            if (c.id === payload.conversationId) {
+              const updatedMessages = c.id === activeChatId
+                ? [...(c.messages || []), {
+                    id: payload.id,
+                    sender: payload.sender,
+                    content: payload.content,
+                    time: payload.time,
+                  }]
+                : (c.messages || []);
+
+              return {
+                ...c,
+                lastMessage: payload.content,
+                time: payload.time,
+                unreadCount: c.id === activeChatId ? c.unreadCount : c.unreadCount + 1,
+                messages: updatedMessages,
+              };
+            }
+            return c;
+          })
+        );
+      });
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [myUserId, activeChatId]);
 
   // Open Create Form
   const handleOpenCreateModal = () => {
@@ -461,64 +551,72 @@ export default function StudentDashboardClient() {
     }
   };
 
-  const handleStartChatWithTutor = (app: TutorApplication) => {
-    const tutorIdentifier = app.tutorId || app.id || "tutor";
-    const existingChat = chats.find(
-      (c) => c.studentName.toLowerCase() === app.tutorName.toLowerCase() || c.id === `chat-${tutorIdentifier}`
-    );
-    if (existingChat) {
-      setActiveChatId(existingChat.id);
-    } else {
-      const newChat: ChatContact = {
-        id: `chat-${tutorIdentifier}`,
-        studentName: app.tutorName,
-        avatarBg: app.avatarBg,
-        lastMessage: `Connected regarding tuition application for ${app.subject}`,
-        time: "Just now",
-        unreadCount: 0,
-        messages: [
-          {
-            id: `msg-${tutorIdentifier}-init`,
-            sender: "tutor",
-            content: `Hello! Thank you for considering my application for ${app.subject}. Feel free to ask any questions or schedule a demo class.`,
-            time: "Just now",
-          },
-        ],
-      };
-      setChats((prev) => [newChat, ...prev]);
-      setActiveChatId(newChat.id);
+  const handleStartChatWithTutor = async (app: TutorApplication) => {
+    if (!myUserId || !app.tutorId) return;
+
+    try {
+      setActionLoading(true);
+      const res = await api.post("/messages/conversations", {
+        studentId: myUserId,
+        tutorId: app.tutorId,
+      });
+
+      const conversation = res.data.data;
+      const existing = chats.find((c) => c.id === conversation.id);
+      if (!existing) {
+        const convRes = await api.get("/messages/conversations");
+        setChats(convRes.data.data);
+      }
+
+      setActiveChatId(conversation.id);
+      setSelectedApplicant(null);
+      router.push("/dashboard?tab=messages");
+      showToast("success", `Opened chat conversation with ${app.tutorName}.`);
+    } catch (err) {
+      console.error("Error starting conversation:", err);
+      showToast("error", "Failed to start conversation.");
+    } finally {
+      setActionLoading(false);
     }
-    setSelectedApplicant(null);
-    router.push("/dashboard?tab=messages");
-    showToast("success", `Opened chat conversation with ${app.tutorName}.`);
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessageText.trim()) return;
+    if (!newMessageText.trim() || !activeChatId) return;
 
-    const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "student",
-      content: newMessageText.trim(),
-      time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    };
-
-    setChats((prev) =>
-      prev.map((c) => {
-        if (c.id === activeChatId) {
-          return {
-            ...c,
-            lastMessage: newMessageText.trim(),
-            time: "Just Now",
-            messages: [...c.messages, newMsg]
-          };
-        }
-        return c;
-      })
-    );
-
+    const textToSend = newMessageText.trim();
     setNewMessageText("");
+
+    try {
+      const res = await api.post("/messages", {
+        conversationId: activeChatId,
+        content: textToSend,
+      });
+
+      const newMsg = {
+        id: res.data.data.id,
+        sender: "student",
+        content: textToSend,
+        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      };
+
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id === activeChatId) {
+            return {
+              ...c,
+              lastMessage: textToSend,
+              time: "Just Now",
+              messages: [...(c.messages || []), newMsg],
+            };
+          }
+          return c;
+        })
+      );
+    } catch (err) {
+      console.error("Error sending message:", err);
+      showToast("error", "Failed to send message.");
+    }
   };
 
   return (
@@ -597,7 +695,7 @@ export default function StudentDashboardClient() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-                {applications.filter((a) => a.status === "Hired").length + 2}
+                {applications.filter((a) => a.status === "Hired").length}
               </span>
               <div className="mt-2 text-xs font-bold text-zinc-400">
                 Hired educators
@@ -657,11 +755,11 @@ export default function StudentDashboardClient() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-                ৳ 13,500
+                ৳ {invoices.filter((inv) => inv.status === "Paid").reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
               </span>
               <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
                 <TrendingUp size={14} />
-                <span>July payouts total</span>
+                <span>Real-time billing volume</span>
               </div>
             </div>
           </div>
@@ -1181,31 +1279,38 @@ export default function StudentDashboardClient() {
             Hired & Active Educators
           </h3>
           <div className="space-y-4">
-            <div className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold text-xs flex items-center justify-center">
-                    Z
+            {applications.filter((a) => a.status === "Hired").map((app) => (
+              <div key={app.id} className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full ${app.avatarBg || "bg-purple-600"} text-white font-extrabold text-xs flex items-center justify-center`}>
+                      {app.tutorName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-zinc-900 dark:text-white">{app.tutorName}</h4>
+                      <p className="text-xs font-bold text-zinc-450">{app.subject} &bull; {app.institution}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-zinc-900 dark:text-white">Zara Tabassum</h4>
-                    <p className="text-xs font-bold text-zinc-450">Chemistry &bull; HSC (1st Year)</p>
+                  <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e]">৳ {app.salaryBid.toLocaleString()}/mo</span>
+                </div>
+                <div className="bg-blue-50/20 dark:bg-blue-955/5 border border-blue-100/50 dark:border-blue-900/10 p-4 rounded-xl flex gap-3 items-start">
+                  <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-blue-800 dark:text-blue-400 uppercase font-bold tracking-wider">
+                      Tutor Progress Logs
+                    </span>
+                    <p className="text-xs text-zinc-650 dark:text-zinc-450 font-semibold leading-relaxed">
+                      Syllabus on track. Ongoing regular model tests and revisions scheduled.
+                    </p>
                   </div>
                 </div>
-                <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e]">৳ 8,000/mo</span>
               </div>
-              <div className="bg-blue-50/20 dark:bg-blue-955/5 border border-blue-100/50 dark:border-blue-900/10 p-4 rounded-xl flex gap-3 items-start">
-                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <span className="text-[10px] text-blue-800 dark:text-blue-400 uppercase font-bold tracking-wider">
-                    Tutor Progress Logs
-                  </span>
-                  <p className="text-xs text-zinc-650 dark:text-zinc-450 font-semibold leading-relaxed">
-                    Chemical Bonds completed. Started Organic Chemistry basic concepts. Preparing for weekly model test.
-                  </p>
-                </div>
+            ))}
+            {applications.filter((a) => a.status === "Hired").length === 0 && (
+              <div className="text-center py-12 text-zinc-400 text-sm font-semibold bg-zinc-50/30 dark:bg-zinc-900/10 border border-zinc-150/60 dark:border-zinc-900 rounded-2xl">
+                No active hired educators under track.
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
