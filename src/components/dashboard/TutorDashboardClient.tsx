@@ -65,6 +65,13 @@ export default function TutorDashboardClient() {
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: "end" });
+    }
+  };
 
   // Keeps state and ref in sync, clears unread badge, and marks conversation read
   const setActiveChatId = (id: string) => {
@@ -311,6 +318,17 @@ export default function TutorDashboardClient() {
       signal.isCancelled = true;
     };
   }, [activeChatId, fetchMessages]);
+
+  // Auto scroll to bottom whenever active chat messages or typing status updates
+  const activeChatForScroll = chats.find((c) => c.id === activeChatId);
+  const isTypingForScroll = activeChatId ? typingUsers[activeChatId] : false;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [activeChatForScroll?.messages?.length, activeChatId, isTypingForScroll, messagesLoading]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -1269,6 +1287,9 @@ export default function TutorDashboardClient() {
                               </div>
                             </div>
                           )}
+
+                          {/* Auto scroll anchor */}
+                          <div ref={messagesEndRef} className="h-0 w-full" />
                         </>
                       )}
                     </div>
