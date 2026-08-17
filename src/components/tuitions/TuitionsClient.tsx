@@ -647,19 +647,25 @@ export default function TuitionsClient() {
                       className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-4xl p-6 hover:shadow-lg dark:hover:shadow-black/30 transition-all duration-300 flex flex-col justify-between hover:scale-[1.01] relative group"
                     >
                       <div className="space-y-4">
-                        {/* Class level and date badge */}
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-black uppercase text-[#0F5B47] dark:text-[#188c6e] tracking-wider block bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-0.5 rounded-full w-max">
+                        {/* Class level, preferred qualification badge, and date */}
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-[#0F5B47] dark:text-[#188c6e] tracking-wider block bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full">
                               {job.classLevel}
                             </span>
+                            {job.tutorQualification && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 px-2.5 py-0.5 rounded-full">
+                                <GraduationCap className="w-3 h-3 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                                <span>{job.tutorQualification}</span>
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-550 block mt-1">
+                          <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-550 shrink-0 mt-0.5">
                             {job.date}
                           </span>
                         </div>
 
-                        {/* Location and subjects details */}
+                        {/* Location, frequency and preferred qualification details */}
                         <div className="space-y-2">
                           <h3 className="text-base font-black text-zinc-900 dark:text-white leading-snug">
                             Need Tutor for {job.subjects.join(", ")}
@@ -673,6 +679,15 @@ export default function TuitionsClient() {
                               <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
                               <span>{job.frequency} &bull; {job.mode}</span>
                             </div>
+                            {job.tutorQualification && (
+                              <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                                <GraduationCap className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
+                                <span className="truncate">
+                                  <span className="text-zinc-400 dark:text-zinc-500 font-normal">Preferred: </span>
+                                  <span className="font-bold text-[#0F5B47] dark:text-[#188c6e]">{job.tutorQualification}</span>
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -687,14 +702,6 @@ export default function TuitionsClient() {
                             </span>
                           ))}
                         </div>
-
-                        {/* Preferred Qualification Badge if specified by student */}
-                        {job.tutorQualification && (
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 px-2.5 py-1 rounded-lg">
-                            <GraduationCap className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                            <span>Req: {job.tutorQualification}</span>
-                          </div>
-                        )}
                       </div>
 
                       {/* Card Footer Salary & apply */}
