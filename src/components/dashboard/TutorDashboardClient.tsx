@@ -51,6 +51,8 @@ export default function TutorDashboardClient() {
   const [myUserId, setMyUserId] = useState<string>("");
   const socketRef = React.useRef<any>(null);
 
+  const activeChat = chats.find((c) => c.id === activeChatId);
+
   // Availability matrix state
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const times = ["Morning", "Afternoon", "Evening"];
@@ -746,109 +748,102 @@ export default function TutorDashboardClient() {
               </div>
 
               {/* Right: Active Chat conversation box */}
-              {(() => {
-                const activeChat = chats.find((c) => c.id === activeChatId);
-                if (!activeChat) {
-                  return (
-                    <div className="flex-1 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold">
-                      Select a chat conversation to start messaging.
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className={`${
-                    chatMobileView === "list" ? "hidden" : "flex"
-                  } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
-                    
-                    {/* Active Chat Header */}
-                    <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center gap-3 shrink-0">
-                      <button
-                        onClick={() => setChatMobileView("list")}
-                        className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
-                      >
-                        <ArrowLeft className="w-4 h-4 stroke-[3px]" />
-                      </button>
-                      <div className={`w-9 h-9 rounded-full ${activeChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0`}>
-                        {activeChat.studentName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black text-zinc-850 dark:text-white leading-tight">
-                          {activeChat.studentName}
-                        </h4>
-                        <span className="text-[9px] text-[#0F5B47] dark:text-[#188c6e] font-black uppercase tracking-wider block mt-0.5">
-                          Online &bull; Student
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Messages logs area */}
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col">
-                      {messagesLoading ? (
-                        <div className="flex flex-col items-center justify-center m-auto text-zinc-400 gap-2">
-                          <Loader2 className="w-6 h-6 animate-spin text-[#0F5B47] dark:text-[#188c6e]" />
-                          <span className="text-xs font-medium">Loading messages...</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-4 mt-auto">
-                          {activeChat.messages?.map((msg) => {
-                            const isTutor = msg.sender === "tutor";
-                            return (
-                              <div
-                                key={msg.id}
-                                className={`flex ${isTutor ? "justify-end" : "justify-start"} items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300`}
-                              >
-                                {!isTutor && (
-                                  <div className={`w-6 h-6 rounded-full ${activeChat.avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-xs mb-1`}>
-                                    {activeChat.studentName.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="max-w-[75%] space-y-1">
-                                  <div
-                                    className={`p-3.5 rounded-2xl text-xs font-semibold leading-relaxed ${
-                                      isTutor
-                                        ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none shadow-xs"
-                                        : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-none shadow-3xs"
-                                    }`}
-                                  >
-                                    {msg.content}
-                                  </div>
-                                  <span className={`text-[8px] font-bold text-zinc-400 block ${isTutor ? "text-right" : "text-left"}`}>
-                                    {msg.time}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bottom Input Area */}
-                    <form
-                      onSubmit={handleSendMessage}
-                      className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+              {!activeChat ? (
+                <div className="flex-1 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold">
+                  Select a chat conversation to start messaging.
+                </div>
+              ) : (
+                <div className={`${
+                  chatMobileView === "list" ? "hidden" : "flex"
+                } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
+                  
+                  {/* Active Chat Header */}
+                  <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => setChatMobileView("list")}
+                      className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
                     >
-                      <input
-                        type="text"
-                        placeholder="Write a message..."
-                        value={newMessageText}
-                        onChange={(e) => setNewMessageText(e.target.value)}
-                        className="flex-1 px-4 py-3 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-850 dark:text-white transition-all duration-200"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
-                        title="Send Message"
-                      >
-                        <Send className="w-4 h-4 text-white" />
-                      </button>
-                    </form>
-
+                      <ArrowLeft className="w-4 h-4 stroke-[3px]" />
+                    </button>
+                    <div className={`w-9 h-9 rounded-full ${activeChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0`}>
+                      {activeChat.studentName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-zinc-850 dark:text-white leading-tight">
+                        {activeChat.studentName}
+                      </h4>
+                      <span className="text-[9px] text-[#0F5B47] dark:text-[#188c6e] font-black uppercase tracking-wider block mt-0.5">
+                        Online &bull; Student
+                      </span>
+                    </div>
                   </div>
-                );
-              })()}
+
+                  {/* Messages logs area */}
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+                    {messagesLoading ? (
+                      <div className="flex flex-col items-center justify-center m-auto text-zinc-400 gap-2">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#0F5B47] dark:text-[#188c6e]" />
+                        <span className="text-xs font-medium">Loading messages...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 mt-auto">
+                        {activeChat.messages?.map((msg) => {
+                          const isTutor = msg.sender === "tutor";
+                          return (
+                            <div
+                              key={msg.id}
+                              className={`flex ${isTutor ? "justify-end" : "justify-start"} items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                            >
+                              {!isTutor && (
+                                <div className={`w-6 h-6 rounded-full ${activeChat.avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-xs mb-1`}>
+                                  {activeChat.studentName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="max-w-[75%] space-y-1">
+                                <div
+                                  className={`p-3.5 rounded-2xl text-xs font-semibold leading-relaxed ${
+                                    isTutor
+                                      ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-none shadow-xs"
+                                      : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-none shadow-3xs"
+                                  }`}
+                                >
+                                  {msg.content}
+                                </div>
+                                <span className={`text-[8px] font-bold text-zinc-400 block ${isTutor ? "text-right" : "text-left"}`}>
+                                  {msg.time}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Input Area */}
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Write a message..."
+                      value={newMessageText}
+                      onChange={(e) => setNewMessageText(e.target.value)}
+                      className="flex-1 px-4 py-3 bg-zinc-50/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] focus:ring-2 focus:ring-[#0F5B47]/10 dark:focus:ring-[#188c6e]/10 text-zinc-850 dark:text-white transition-all duration-200"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="p-3 bg-[#F26522] hover:bg-[#d9551a] text-white rounded-xl shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+                      title="Send Message"
+                    >
+                      <Send className="w-4 h-4 text-white" />
+                    </button>
+                  </form>
+
+                </div>
+              )}
             </div>
           )}
         </div>
