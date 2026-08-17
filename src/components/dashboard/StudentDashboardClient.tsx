@@ -1685,14 +1685,6 @@ export default function StudentDashboardClient() {
                             <span className="hidden sm:inline text-[11px]">Block</span>
                           </button>
                         )}
-                        <button
-                          onClick={() => setShowDeleteConvModal(true)}
-                          className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
-                          title="Delete Conversation"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span className="hidden sm:inline text-[11px]">Delete Chat</span>
-                        </button>
                       </div>
                     </div>
 
