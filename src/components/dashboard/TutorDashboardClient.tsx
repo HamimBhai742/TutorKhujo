@@ -61,6 +61,9 @@ export default function TutorDashboardClient() {
     activeChatIdRef.current = id;
     setActiveChatIdState(id);
 
+    // Join conversation room
+    socketRef.current?.emit("join_conversation", id);
+
     // Immediately clear unread badge in local state
     setChats((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
@@ -211,7 +214,8 @@ export default function TutorDashboardClient() {
   }, [activeChatId, fetchMessages]);
 
   useEffect(() => {
-    if (!myUserId) return;
+    let interval: NodeJS.Timeout | null = null;
+    let handleFocus: (() => void) | null = null;
 
     import("socket.io-client").then(({ io }) => {
       const token = localStorage.getItem("token");
@@ -236,6 +240,15 @@ export default function TutorDashboardClient() {
           return next;
         });
       });
+
+      // Request active online users immediately and poll every 3 seconds
+      socket.emit("get_online_users");
+      interval = setInterval(() => {
+        socket.emit("get_online_users");
+      }, 3000);
+
+      handleFocus = () => socket.emit("get_online_users");
+      window.addEventListener("focus", handleFocus);
 
       // Typing status listener
       socket.on("typing_status", (payload: { conversationId: string; senderId: string; isTyping: boolean }) => {
@@ -305,11 +318,13 @@ export default function TutorDashboardClient() {
     });
 
     return () => {
+      if (interval) clearInterval(interval);
+      if (handleFocus) window.removeEventListener("focus", handleFocus);
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
     };
-  }, [myUserId]); // activeChatId removed from deps — captured via ref instead
+  }, []); // activeChatId removed from deps — captured via ref instead
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -902,9 +917,13 @@ export default function TutorDashboardClient() {
                             {currentChat.studentName}
                           </h4>
                           {isTyping ? (
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 mt-0.5 animate-pulse">
-                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" />
-                              typing...
+                            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1.5 mt-0.5">
+                              <span className="inline-flex items-center gap-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                              </span>
+                              <span>typing...</span>
                             </span>
                           ) : (
                             <span className={`text-[10px] font-bold flex items-center gap-1.5 mt-0.5 ${
@@ -970,13 +989,16 @@ export default function TutorDashboardClient() {
                             );
                           })}
 
-                          {/* Real-time typing bubble */}
+                          {/* Real-time Messenger-style typing bubble */}
                           {isTyping && (
-                            <div className="flex items-center gap-2 animate-in fade-in duration-200">
-                              <div className="bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 rounded-2xl rounded-bl-xs flex items-center gap-1.5 shadow-xs">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0ms" }} />
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "150ms" }} />
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                            <div className="flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                              <div className={`w-7 h-7 rounded-full ${currentChat.avatarBg || "bg-emerald-600"} text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs mb-1 shrink-0`}>
+                                {currentChat.studentName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 px-4 py-3 rounded-2xl rounded-bl-xs flex items-center gap-1.5 shadow-xs">
+                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "300ms" }} />
                               </div>
                             </div>
                           )}
@@ -988,7 +1010,7 @@ export default function TutorDashboardClient() {
                     <form
                       onSubmit={(e) => {
                         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                        if (socketRef.current && currentChat.recipientId) {
+                        if (socketRef.current && currentChat?.id) {
                           socketRef.current.emit("typing_stop", {
                             conversationId: currentChat.id,
                             recipientId: currentChat.recipientId,
@@ -1005,7 +1027,7 @@ export default function TutorDashboardClient() {
                         onChange={(e) => {
                           const val = e.target.value;
                           setNewMessageText(val);
-                          if (socketRef.current && currentChat.recipientId) {
+                          if (socketRef.current && currentChat?.id) {
                             socketRef.current.emit("typing_start", {
                               conversationId: currentChat.id,
                               recipientId: currentChat.recipientId,
@@ -1016,7 +1038,7 @@ export default function TutorDashboardClient() {
                                 conversationId: currentChat.id,
                                 recipientId: currentChat.recipientId,
                               });
-                            }, 2000);
+                            }, 1500);
                           }
                         }}
                         className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-2xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-900 dark:text-white"
