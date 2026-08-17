@@ -30,7 +30,7 @@ import {
   ChatContact,
   ChatMessage
 } from "@/data/dashboard";
-import api from "@/lib/api";
+import api, { SOCKET_URL } from "@/lib/api";
 
 export default function TutorDashboardClient() {
   const searchParams = useSearchParams();
@@ -156,40 +156,46 @@ export default function TutorDashboardClient() {
     };
   }, [fetchDashboardData]);
 
-  const fetchMessages = async (convId: string) => {
+  const fetchMessages = useCallback(async (convId: string, signal?: { isCancelled: boolean }) => {
     try {
       setMessagesLoading(true);
       const res = await api.get(`/messages/${convId}`);
-      setChats((prev) =>
-        prev.map((c) => (c.id === convId ? { ...c, messages: res.data.data } : c))
-      );
+      if (!signal?.isCancelled) {
+        setChats((prev) =>
+          prev.map((c) => (c.id === convId ? { ...c, messages: res.data.data } : c))
+        );
+      }
     } catch (err) {
-      console.error("Error loading chat messages:", err);
+      if (!signal?.isCancelled) {
+        console.error("Error loading chat messages:", err);
+      }
     } finally {
-      setMessagesLoading(false);
+      if (!signal?.isCancelled) {
+        setMessagesLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    let ignore = false;
+    const signal = { isCancelled: false };
     if (activeChatId) {
       Promise.resolve().then(() => {
-        if (!ignore) {
-          fetchMessages(activeChatId);
+        if (!signal.isCancelled) {
+          fetchMessages(activeChatId, signal);
         }
       });
     }
     return () => {
-      ignore = true;
+      signal.isCancelled = true;
     };
-  }, [activeChatId]);
+  }, [activeChatId, fetchMessages]);
 
   useEffect(() => {
     if (!myUserId) return;
 
     import("socket.io-client").then(({ io }) => {
       const token = localStorage.getItem("token");
-      const socket = io("http://localhost:5001", {
+      const socket = io(SOCKET_URL, {
         auth: { token }, // JWT verified server-side
       });
       socketRef.current = socket;

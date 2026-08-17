@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import api, { SOCKET_URL } from "@/lib/api";
 
 import type { Socket } from "socket.io-client";
 
@@ -56,7 +56,7 @@ export default function NotificationBell() {
       if (!active) return;
 
       const token = localStorage.getItem("token");
-      const socket = io("http://localhost:5001", {
+      const socket = io(SOCKET_URL, {
         auth: { token }, // JWT verified server-side — no more insecure userId in query
       });
       socketRef.current = socket;

@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
-import api from "@/lib/api";
+import api, { SOCKET_URL } from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import {
   TuitionPost,
@@ -318,7 +318,7 @@ export default function StudentDashboardClient() {
 
     import("socket.io-client").then(({ io }) => {
       const token = localStorage.getItem("token");
-      const socket = io("http://localhost:5001", {
+      const socket = io(SOCKET_URL, {
         auth: { token }, // JWT verified server-side
       });
       socketRef.current = socket;
