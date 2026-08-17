@@ -590,29 +590,33 @@ export default function StudentDashboardClient() {
   };
 
   const handleStartChatWithTutor = async (app: TutorApplication) => {
-    if (!myUserId || !app.tutorId) return;
+    if (!app.tutorId) {
+      showToast("error", "Tutor profile information is unavailable.");
+      return;
+    }
 
     try {
       setActionLoading(true);
       const res = await api.post("/messages/conversations", {
-        studentId: myUserId,
+        otherUserId: app.tutorId,
         tutorId: app.tutorId,
+        studentId: myUserId || undefined,
       });
 
-      const conversation = res.data.data;
-      const existing = chats.find((c) => c.id === conversation.id);
-      if (!existing) {
+      const conversation = res.data?.data;
+      if (conversation?.id) {
         const convRes = await api.get("/messages/conversations");
-        setChats(convRes.data.data);
+        const rawList = Array.isArray(convRes.data?.data) ? convRes.data.data : (convRes.data?.data?.data || []);
+        setChats(rawList);
+        setActiveChatId(conversation.id);
       }
 
-      setActiveChatId(conversation.id);
       setSelectedApplicant(null);
       router.push("/dashboard?tab=messages");
       showToast("success", `Opened chat conversation with ${app.tutorName}.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error starting conversation:", err);
-      showToast("error", "Failed to start conversation.");
+      showToast("error", err?.response?.data?.message || "Failed to start conversation.");
     } finally {
       setActionLoading(false);
     }
