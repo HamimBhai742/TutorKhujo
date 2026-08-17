@@ -957,6 +957,22 @@ export default function StudentDashboardClient() {
     }
   };
 
+  const handleRejectApplication = async (app: TutorApplication) => {
+    try {
+      await api.patch(`/tuitions/applications/${app.id}/status`, { status: "Rejected" });
+      setApplications((prev) =>
+        prev.map((a) => (a.id === app.id ? { ...a, status: "Rejected" } : a))
+      );
+      if (selectedApplicant?.id === app.id) {
+        setSelectedApplicant((prev) => (prev ? { ...prev, status: "Rejected" } : null));
+      }
+      showToast("success", `Application from ${app.tutorName} has been declined.`);
+    } catch (err: any) {
+      console.error("Error rejecting application:", err);
+      showToast("error", err?.response?.data?.message || "Failed to reject application.");
+    }
+  };
+
   const handleStartChatWithTutor = async (app: TutorApplication) => {
     if (!app.tutorId) {
       showToast("error", "Tutor profile information is unavailable.");
@@ -1249,6 +1265,14 @@ export default function StudentDashboardClient() {
                       title="Chat with Tutor"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectApplication(app)}
+                      className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-xl transition-colors cursor-pointer"
+                      title="Decline / Reject Application"
+                    >
+                      <X className="w-3.5 h-3.5 stroke-[2.5px]" />
                     </button>
                     <button
                       type="button"
@@ -1574,15 +1598,29 @@ export default function StudentDashboardClient() {
                       <span>Chat</span>
                     </button>
 
-                    {/* Hire Tutor Button */}
+                    {/* Hire & Reject Buttons */}
                     {app.status === "Pending" ? (
-                      <button
-                        type="button"
-                        onClick={() => handleHireTutor(app)}
-                        className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer shadow-xs"
-                      >
-                        Hire Tutor
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectApplication(app)}
+                          className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-black rounded-xl border border-rose-200/60 dark:border-rose-800/40 transition-colors cursor-pointer"
+                          title="Decline this tutor application"
+                        >
+                          Decline
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleHireTutor(app)}
+                          className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer shadow-xs"
+                        >
+                          Hire Tutor
+                        </button>
+                      </>
+                    ) : app.status === "Rejected" ? (
+                      <span className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-black rounded-xl border border-rose-200/50">
+                        Declined
+                      </span>
                     ) : (
                       <span className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-[#0F5B47] dark:text-[#188c6e] text-xs font-black rounded-xl border border-emerald-200/50">
                         Hired
@@ -2810,19 +2848,34 @@ export default function StudentDashboardClient() {
                   <span>Chat with Tutor</span>
                 </button>
 
-                {/* Hire Button */}
+                {/* Hire & Reject Buttons in Modal */}
                 {selectedApplicant.status === "Pending" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleHireTutor(selectedApplicant);
-                      setSelectedApplicant((prev) => prev ? { ...prev, status: "Hired" } : null);
-                    }}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
-                  >
-                    <Check className="w-4 h-4 stroke-[3px]" />
-                    <span>Hire Tutor</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectApplication(selectedApplicant)}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold text-xs rounded-xl border border-rose-200/70 dark:border-rose-800/40 transition-all cursor-pointer"
+                    >
+                      <X className="w-4 h-4 stroke-[2.5px]" />
+                      <span>Decline</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleHireTutor(selectedApplicant);
+                        setSelectedApplicant((prev) => (prev ? { ...prev, status: "Hired" } : null));
+                      }}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+                    >
+                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <span>Hire Tutor</span>
+                    </button>
+                  </>
+                ) : selectedApplicant.status === "Rejected" ? (
+                  <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 font-black text-xs rounded-xl">
+                    <X className="w-4 h-4" />
+                    <span>Application Declined</span>
+                  </div>
                 ) : (
                   <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200 dark:border-emerald-900/50 font-black text-xs rounded-xl">
                     <CheckCircle2 className="w-4 h-4" />
