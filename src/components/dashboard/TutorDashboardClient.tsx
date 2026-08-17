@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -20,16 +21,14 @@ import {
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import {
-  MOCK_REQUESTS,
-  MOCK_ACTIVE_TUITIONS,
-  MOCK_PAYOUTS,
-  MOCK_CHATS,
   TuitionRequest,
   ActiveTuition,
   Payout,
   ChatContact,
-  ChatMessage
+  ChatMessage,
+  MOCK_CHATS
 } from "@/data/dashboard";
+import api from "@/lib/api";
 
 export default function TutorDashboardClient() {
   const searchParams = useSearchParams();
@@ -37,14 +36,102 @@ export default function TutorDashboardClient() {
   const currentTab = searchParams.get("tab") || "overview";
 
   // States to make the dashboard dynamic
-  const [requests, setRequests] = useState<TuitionRequest[]>(MOCK_REQUESTS);
-  const [activeTuitions, setActiveTuitions] = useState<ActiveTuition[]>(MOCK_ACTIVE_TUITIONS);
-  const [payouts] = useState<Payout[]>(MOCK_PAYOUTS);
+  const [requests, setRequests] = useState<TuitionRequest[]>([]);
+  const [activeTuitions, setActiveTuitions] = useState<ActiveTuition[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [chats, setChats] = useState<ChatContact[]>(MOCK_CHATS);
   const [activeChatId, setActiveChatId] = useState<string>("chat-1");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Availability matrix state
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const times = ["Morning", "Afternoon", "Evening"];
+  const [availability, setAvailability] = useState<Record<string, Record<string, boolean>>>({
+    Morning: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
+    Afternoon: { Mon: true, Tue: true, Wed: true, Thu: false, Fri: false, Sat: false, Sun: false },
+    Evening: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true }
+  });
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [applicationsRes, transactionsRes, userRes] = await Promise.all([
+        api.get("/tuitions/tutor/my-applied"),
+        api.get("/payments/my-transactions"),
+        api.get("/user/me"),
+      ]);
+
+      const applications = applicationsRes.data.data;
+
+      // 1. Map Requests (Pending or Shortlisted applications)
+      const mappedRequests = applications
+        .filter((app: any) => app.status === "Pending" || app.status === "Shortlisted")
+        .map((app: any) => ({
+          id: app.id,
+          studentName: app.tuitionPost?.student?.name || "N/A",
+          subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
+          classLevel: app.tuitionPost?.classLevel || "N/A",
+          location: app.tuitionPost?.location || "N/A",
+          salary: app.tuitionPost?.budget || 0,
+          mode: app.tuitionPost?.mode || "Home",
+          frequency: app.tuitionPost?.frequency || "3 Days / Week",
+          status: app.status,
+          date: app.createdAt ? new Date(app.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
+        }));
+      setRequests(mappedRequests);
+
+      // 2. Map Active Tuitions (Hired applications)
+      const mappedActive = applications
+        .filter((app: any) => app.status === "Hired")
+        .map((app: any) => ({
+          id: app.id,
+          studentName: app.tuitionPost?.student?.name || "N/A",
+          subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
+          classLevel: app.tuitionPost?.classLevel || "N/A",
+          location: app.tuitionPost?.location || "N/A",
+          salary: app.tuitionPost?.budget || 0,
+          mode: app.tuitionPost?.mode || "Home",
+          frequency: app.tuitionPost?.frequency || "3 Days / Week",
+          status: "Active",
+          progress: "Trigonometry & Optics completed. Preparing for yearly tests.",
+          startDate: app.updatedAt ? new Date(app.updatedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
+          nextSession: "Today at 5:00 PM",
+        }));
+      setActiveTuitions(mappedActive);
+
+      // 3. Map Payouts
+      setPayouts(transactionsRes.data.data);
+
+      // 4. Load Availability
+      const dbAvailability = userRes.data.data.availability;
+      if (dbAvailability) {
+        setAvailability(dbAvailability);
+      }
+    } catch (err: any) {
+      console.error("Error loading tutor dashboard data:", err);
+      setError("Failed to retrieve dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        fetchDashboardData();
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,15 +161,6 @@ export default function TutorDashboardClient() {
     setNewMessageText("");
   };
 
-  // Availability matrix state
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const times = ["Morning", "Afternoon", "Evening"];
-  const [availability, setAvailability] = useState<Record<string, Record<string, boolean>>>({
-    Morning: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
-    Afternoon: { Mon: true, Tue: true, Wed: true, Thu: false, Fri: false, Sat: false, Sun: false },
-    Evening: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true }
-  });
-
   const handleToggleAvailability = (time: string, day: string) => {
     setAvailability((prev) => ({
       ...prev,
@@ -93,34 +171,85 @@ export default function TutorDashboardClient() {
     }));
   };
 
-  // Actions
-  const handleAcceptRequest = (req: TuitionRequest) => {
-    // 1. Update requests list
-    setRequests((prev) => prev.filter((r) => r.id !== req.id));
-
-    // 2. Add to active tuitions
-    const newActive: ActiveTuition = {
-      id: `act-${Date.now()}`,
-      studentName: req.studentName,
-      subject: req.subject,
-      classLevel: req.classLevel,
-      location: req.location,
-      salary: req.salary,
-      mode: req.mode,
-      frequency: req.frequency,
-      status: "Active",
-      progress: "Onboarding completed. Initial session schedule pending.",
-      startDate: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" }),
-      nextSession: "First session pending scheduler"
-    };
-    setActiveTuitions((prev) => [newActive, ...prev]);
-    alert(`Success! You have accepted the tuition request from ${req.studentName}. They will be notified via SMS.`);
+  const handleSaveAvailability = async () => {
+    try {
+      await api.patch("/user/me", { availability });
+      alert("Availability preferences saved successfully!");
+    } catch (err: any) {
+      console.error("Error saving availability:", err);
+      alert(err.response?.data?.message || "Failed to save availability preferences.");
+    }
   };
 
-  const handleDeclineRequest = (id: string) => {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-    alert("Request declined successfully.");
+  const handleAcceptRequest = async (req: TuitionRequest) => {
+    try {
+      await api.patch(`/tuitions/applications/${req.id}/status`, { status: "Hired" });
+      alert(`Success! You have accepted the tuition request from ${req.studentName}.`);
+      fetchDashboardData();
+    } catch (err: any) {
+      console.error("Error accepting application:", err);
+      alert(err.response?.data?.message || "Failed to accept match request.");
+    }
   };
+
+  const handleDeclineRequest = async (id: string) => {
+    try {
+      await api.patch(`/tuitions/applications/${id}/status`, { status: "Rejected" });
+      alert("Request declined successfully.");
+      fetchDashboardData();
+    } catch (err: any) {
+      console.error("Error declining application:", err);
+      alert(err.response?.data?.message || "Failed to decline match request.");
+    }
+  };
+
+  const totalEarnings = payouts
+    .filter((p) => p.status === "Paid")
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  if (loading) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-4 rounded-3xl border border-zinc-200 bg-white p-8 dark:border-zinc-900 dark:bg-zinc-950 shadow-sm animate-pulse">
+        <svg
+          className="h-12 w-12 animate-spin text-[#0F5B47] dark:text-[#188c6e]"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+        <p className="text-sm font-semibold text-zinc-550 dark:text-zinc-400">
+          Loading Tutor Dashboard...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-3xl border border-red-150 bg-red-50/20 p-8 text-center dark:border-red-950/20 dark:bg-red-950/10">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="mt-4 rounded-xl bg-[#0F5B47] hover:bg-[#0c4a39] px-5 py-2.5 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+        >
+          Reload Dashboard Data
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -135,7 +264,7 @@ export default function TutorDashboardClient() {
             {currentTab === "earnings" && "Earnings & Payments"}
             {currentTab === "availability" && "Availability Grid"}
           </h2>
-          <p className="text-sm font-semibold text-zinc-550 dark:text-zinc-400 mt-1">
+          <p className="text-sm font-semibold text-[#5F6E6B] dark:text-zinc-400 mt-1">
             {currentTab === "overview" && "Manage classes, schedules, and monitor search rankings."}
             {currentTab === "requests" && "Review student matches and accept client requests."}
             {currentTab === "active" && "Track current student courses and session histories."}
@@ -180,11 +309,11 @@ export default function TutorDashboardClient() {
             </div>
             <div className="mt-4">
               <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-                ৳ 24,500
+                ৳ {totalEarnings.toLocaleString()}
               </span>
-              <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
+              <div className="mt-2 text-xs font-bold text-emerald-555 flex items-center gap-1">
                 <TrendingUp size={14} />
-                <span>+12.5% vs last month</span>
+                <span>Real-time earnings summary</span>
               </div>
             </div>
           </div>
@@ -834,7 +963,7 @@ export default function TutorDashboardClient() {
 
           <div className="pt-4 flex justify-end">
             <button
-              onClick={() => alert("Availability preferences saved successfully!")}
+              onClick={handleSaveAvailability}
               className="px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               Save Schedule Preferences
