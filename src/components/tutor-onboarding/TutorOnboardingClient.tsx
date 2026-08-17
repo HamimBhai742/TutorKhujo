@@ -356,7 +356,8 @@ export default function TutorOnboardingClient() {
     }
   };
 
-  const handleFinishOnboarding = () => {
+  const handleFinishOnboarding = async () => {
+    await saveProgress(true);
     window.location.href = "/dashboard";
   };
 
