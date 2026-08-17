@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { HelpCircle, ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
+import { HelpCircle, ArrowLeft, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
 import SidebarSteps from "./steps/SidebarSteps";
 import PersonalInfoStep from "./steps/PersonalInfoStep";
 import EducationStep from "./steps/EducationStep";
@@ -39,6 +39,7 @@ export default function TutorOnboardingClient() {
   // Active step (1 to 4)
   const [activeStep, setActiveStep] = useState<number>(1);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [stepError, setStepError] = useState<string | null>(null);
   
   // Step 1: Personal Info
   const [profilePic, setProfilePic] = useState<string>("");
@@ -249,27 +250,110 @@ export default function TutorOnboardingClient() {
     setExperiences(experiences.filter((exp) => exp.id !== id));
   };
 
+  const validateCurrentStep = (): boolean => {
+    setStepError(null);
+
+    // Step 1: Personal Info Validation
+    if (activeStep === 1) {
+      if (!fullName.trim() || fullName.trim().length < 3) {
+        setStepError("Please enter your full name (minimum 3 characters).");
+        return false;
+      }
+      if (!gender || (gender !== "Male" && gender !== "Female")) {
+        setStepError("Please select your gender (Male or Female).");
+        return false;
+      }
+      if (!dob.trim()) {
+        setStepError("Please enter your date of birth.");
+        return false;
+      }
+      if (!city.trim() || city.trim().length < 2) {
+        setStepError("Please specify your city or primary tuition area.");
+        return false;
+      }
+      if (!bio.trim() || bio.trim().length < 15) {
+        setStepError("Please write a short bio introducing yourself (at least 15 characters).");
+        return false;
+      }
+      return true;
+    }
+
+    // Step 2: Education Validation
+    if (activeStep === 2) {
+      if (!qualifications || qualifications.length === 0) {
+        setStepError("Please add at least one educational qualification.");
+        return false;
+      }
+      const primary = qualifications[0];
+      if (!primary.institution.trim() || primary.institution.trim().length < 2) {
+        setStepError("Please enter your primary university/institution name.");
+        return false;
+      }
+      if (!primary.subject.trim() || primary.subject.trim().length < 2) {
+        setStepError("Please enter your department/major/field of study.");
+        return false;
+      }
+      return true;
+    }
+
+    // Step 3: Preferences Validation
+    if (activeStep === 3) {
+      if (!subjects || subjects.length === 0) {
+        setStepError("Please add at least one subject you wish to teach.");
+        return false;
+      }
+      if (!tuitionModes || tuitionModes.length === 0) {
+        setStepError("Please select at least one tuition mode (Home, Online, or Both).");
+        return false;
+      }
+      if (!salary || salary <= 0) {
+        setStepError("Please enter your expected minimum monthly salary.");
+        return false;
+      }
+      return true;
+    }
+
+    // Step 4: Experience Validation
+    if (activeStep === 4) {
+      if (!totalYearsExp.trim()) {
+        setStepError("Please select your total teaching experience.");
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  };
+
   // Navigation handlers
   const handleNext = () => {
+    if (!validateCurrentStep()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     saveProgress(true);
     if (activeStep < 4) {
       setActiveStep(activeStep + 1);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setShowSuccessModal(true);
     }
   };
 
   const handleBack = () => {
+    setStepError(null);
     if (activeStep > 1) {
       setActiveStep(activeStep - 1);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handleSkip = () => {
-    saveProgress(true);
-    window.location.href = "/dashboard";
+    if (validateCurrentStep()) {
+      saveProgress(true);
+      window.location.href = "/dashboard";
+    }
   };
 
   const handleFinishOnboarding = () => {
@@ -325,7 +409,14 @@ export default function TutorOnboardingClient() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col justify-between">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-sm p-6 md:p-10 space-y-8 min-h-125">
-            
+            {/* Step Validation Error Banner */}
+            {stepError && (
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold rounded-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                <span>{stepError}</span>
+              </div>
+            )}
+
             {/* Step 1: Personal Info */}
             {activeStep === 1 && (
               <PersonalInfoStep

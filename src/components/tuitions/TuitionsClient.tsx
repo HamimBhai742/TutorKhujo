@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import {
   MapPin,
   BookOpen,
@@ -903,8 +904,19 @@ export default function TuitionsClient() {
               </div>
 
               {errorMessage && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-xl">
-                  {errorMessage}
+                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold rounded-xl space-y-2.5">
+                  <p className="leading-relaxed">{errorMessage}</p>
+                  {(errorMessage.toLowerCase().includes("profile") ||
+                    errorMessage.toLowerCase().includes("complete") ||
+                    errorMessage.toLowerCase().includes("gender") ||
+                    errorMessage.toLowerCase().includes("qualification")) && (
+                    <Link
+                      href="/tutor-onboarding"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0F5B47] hover:bg-[#0c4838] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                    >
+                      <span>Complete Profile Setup (80%+) Now &rarr;</span>
+                    </Link>
+                  )}
                 </div>
               )}
 
