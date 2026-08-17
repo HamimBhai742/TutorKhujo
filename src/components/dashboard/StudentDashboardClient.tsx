@@ -53,6 +53,7 @@ import {
   MessageReactionItem
 } from "@/data/dashboard";
 import { Tutor, MOCK_TUTORS } from "@/data/tutors";
+import { BANGLADESH_QUALIFICATIONS } from "@/data/qualifications";
 
 export default function StudentDashboardClient() {
   const searchParams = useSearchParams();
@@ -2397,18 +2398,28 @@ export default function StudentDashboardClient() {
 
               <div className="space-y-1.5">
                 <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center justify-between">
-                  <span>Tutor Qualification / Preferred Background</span>
+                  <span>Tutor Qualification / Preferred University</span>
                   <span className="text-[10px] text-zinc-400 font-normal lowercase">(optional)</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. BUET / DU / Medical / Public University / Min 2+ Years Exp"
-                  value={tutorQualification}
-                  onChange={(e) => setTutorQualification(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
-                />
+                <div className="relative">
+                  <select
+                    value={tutorQualification || "Any"}
+                    onChange={(e) => setTutorQualification(e.target.value === "Any" ? "" : e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white cursor-pointer transition-colors"
+                  >
+                    {BANGLADESH_QUALIFICATIONS.map((group) => (
+                      <optgroup key={group.category} label={group.category}>
+                        {group.options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
                 <p className="text-[10px] text-zinc-400 font-medium leading-tight">
-                  💡 If left empty, any qualified tutor can apply. If specified, only tutors with matching university/qualifications can apply.
+                  💡 If left as &quot;Any&quot;, any qualified tutor can apply. If a university or category is selected, only tutors matching that qualification can apply.
                 </p>
               </div>
 
