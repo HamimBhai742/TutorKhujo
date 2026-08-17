@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "next-themes";
+import NotificationBell from "@/components/dashboard/NotificationBell";
 import { 
   LayoutDashboard, 
   Users, 
@@ -187,6 +188,9 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Theme Toggle Button */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
