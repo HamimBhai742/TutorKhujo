@@ -34,6 +34,7 @@ export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -43,6 +44,7 @@ export default function AdminDashboardClient() {
           api.get("/tuitions?limit=3"),
         ]);
         
+        if (!active) return;
         setStats(statsRes.data.data);
         
         // Filter pending verifications
@@ -67,10 +69,19 @@ export default function AdminDashboardClient() {
       } catch (err) {
         console.error("Error loading dashboard data:", err);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
-    fetchData();
+    Promise.resolve().then(() => {
+      if (active) {
+        fetchData();
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleApprove = async (id: string, name: string) => {

@@ -36,13 +36,13 @@ import { TakaIcon } from "@/components/shared/TakaIcon";
 import api from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import {
-  MOCK_CHATS,
   TuitionPost,
   TutorApplication,
   Invoice,
   ChatContact,
   ChatMessage
 } from "@/data/dashboard";
+import { Tutor, MOCK_TUTORS } from "@/data/tutors";
 
 export default function StudentDashboardClient() {
   const searchParams = useSearchParams();
@@ -60,12 +60,12 @@ export default function StudentDashboardClient() {
   const [selectedApplicant, setSelectedApplicant] = useState<TutorApplication | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [chats, setChats] = useState<ChatContact[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatSearch, setChatSearch] = useState<string>("");
   const [myUserId, setMyUserId] = useState<string>("");
-  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const socketRef = React.useRef<any>(null);
 
   // Post Tuition Form & Modal States
@@ -273,9 +273,17 @@ export default function StudentDashboardClient() {
   };
 
   useEffect(() => {
+    let ignore = false;
     if (activeChatId) {
-      fetchMessages(activeChatId);
+      Promise.resolve().then(() => {
+        if (!ignore) {
+          fetchMessages(activeChatId);
+        }
+      });
     }
+    return () => {
+      ignore = true;
+    };
   }, [activeChatId]);
 
   useEffect(() => {
@@ -593,7 +601,7 @@ export default function StudentDashboardClient() {
         content: textToSend,
       });
 
-      const newMsg = {
+      const newMsg: ChatMessage = {
         id: res.data.data.id,
         sender: "student",
         content: textToSend,
@@ -1194,81 +1202,100 @@ export default function StudentDashboardClient() {
 
       {/* --- PANEL 4: MESSAGES --- */}
       {currentTab === "messages" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs grid grid-cols-1 md:grid-cols-12 min-h-137.5">
-          {/* Chat list */}
-          <div className="md:col-span-4 border-r border-zinc-100 dark:border-zinc-900 p-4 space-y-4">
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={chatSearch}
-              onChange={(e) => setChatSearch(e.target.value)}
-              className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
-            />
-            <div className="space-y-2">
-              {chats.map((c) => (
-                <div
-                  key={c.id}
-                  onClick={() => setActiveChatId(c.id)}
-                  className={`p-3 rounded-2xl cursor-pointer transition-colors flex items-center gap-3 ${
-                    activeChatId === c.id
-                      ? "bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 border border-[#0F5B47]/20 dark:border-[#188c6e]/20"
-                      : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-full ${c.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs`}>
-                    {c.studentName.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-black text-zinc-900 dark:text-white truncate">
-                      {c.studentName}
-                    </h4>
-                    <p className="text-[10px] font-medium text-zinc-450 dark:text-zinc-500 truncate mt-0.5">
-                      {c.lastMessage}
-                    </p>
-                  </div>
-                </div>
-              ))}
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl overflow-hidden shadow-xs min-h-137.5">
+          {chats.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <MessageSquare className="w-14 h-14 text-zinc-300 dark:text-zinc-700 mb-4" />
+              <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wide">Your inbox is empty</h4>
+              <p className="text-xs font-semibold text-zinc-450 dark:text-zinc-500 max-w-sm mt-1.5 leading-relaxed">
+                Connect with tutors regarding tuition postings or applications to start a chat thread.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-12 min-h-137.5">
+              {/* Chat list */}
+              <div className="md:col-span-4 border-r border-zinc-100 dark:border-zinc-900 p-4 space-y-4">
+                <input
+                  type="text"
+                  placeholder="Search conversations..."
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                />
+                <div className="space-y-2">
+                  {chats.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => setActiveChatId(c.id)}
+                      className={`p-3 rounded-2xl cursor-pointer transition-colors flex items-center gap-3 ${
+                        activeChatId === c.id
+                          ? "bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 border border-[#0F5B47]/20 dark:border-[#188c6e]/20"
+                          : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full ${c.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs`}>
+                        {c.studentName.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-black text-zinc-900 dark:text-white truncate">
+                          {c.studentName}
+                        </h4>
+                        <p className="text-[10px] font-medium text-zinc-450 dark:text-zinc-500 truncate mt-0.5">
+                          {c.lastMessage}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Active Chat Conversation */}
-          <div className="md:col-span-8 flex flex-col justify-between p-6">
-            <div className="space-y-4 overflow-y-auto max-h-100">
-              {chats.find(c => c.id === activeChatId)?.messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${m.sender === "student" ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold ${
-                      m.sender === "student"
-                        ? "bg-[#0F5B47] text-white rounded-br-xs"
-                        : "bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
-                    }`}
+              {/* Active Chat Conversation */}
+              <div className="md:col-span-8 flex flex-col justify-between p-6">
+                <div className="space-y-4 overflow-y-auto max-h-100">
+                  {messagesLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-zinc-400 gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#0F5B47] dark:text-[#188c6e]" />
+                      <span className="text-xs font-medium">Loading messages...</span>
+                    </div>
+                  ) : (
+                    chats.find(c => c.id === activeChatId)?.messages?.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex flex-col ${m.sender === "student" ? "items-end" : "items-start"}`}
+                      >
+                        <div
+                          className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold ${
+                            m.sender === "student"
+                              ? "bg-[#0F5B47] text-white rounded-br-xs"
+                              : "bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
+                          }`}
+                        >
+                          {m.content}
+                        </div>
+                        <span className="text-[9px] font-bold text-zinc-400 mt-1 px-1">{m.time}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={newMessageText}
+                    onChange={(e) => setNewMessageText(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
+                  />
+                  <button
+                    type="submit"
+                    className="px-5 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-xs font-extrabold uppercase rounded-xl transition-colors cursor-pointer"
                   >
-                    {m.content}
-                  </div>
-                  <span className="text-[9px] font-bold text-zinc-400 mt-1 px-1">{m.time}</span>
-                </div>
-              ))}
+                    Send
+                  </button>
+                </form>
+              </div>
             </div>
-
-            <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={newMessageText}
-                onChange={(e) => setNewMessageText(e.target.value)}
-                className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white"
-              />
-              <button
-                type="submit"
-                className="px-5 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-xs font-extrabold uppercase rounded-xl transition-colors cursor-pointer"
-              >
-                Send
-              </button>
-            </form>
-          </div>
+          )}
         </div>
       )}
 
