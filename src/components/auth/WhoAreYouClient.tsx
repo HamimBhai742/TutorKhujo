@@ -25,9 +25,13 @@ export default function WhoAreYouClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // If auth loading is complete and user is not logged in, redirect to login
-    if (!loading && !user) {
-      window.location.href = ROUTES.LOGIN;
+    // Redirect if not logged in or if already an admin
+    if (!loading) {
+      if (!user) {
+        window.location.href = ROUTES.LOGIN;
+      } else if (user.role === "admin") {
+        window.location.href = ROUTES.DASHBOARD.HOME;
+      }
     }
   }, [user, loading]);
 

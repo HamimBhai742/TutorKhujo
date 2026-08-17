@@ -44,8 +44,10 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
       
       login(accessToken, user);
       
-      // Redirect to role selection if first time, otherwise to home page
-      if (user?.isFirstLogin) {
+      // Redirect to dashboard if admin, to role selection if first time, otherwise to home page
+      if (user?.role === "admin") {
+        window.location.href = ROUTES.DASHBOARD.HOME;
+      } else if (user?.isFirstLogin) {
         window.location.href = "/who-are-you";
       } else {
         window.location.href = ROUTES.HOME;
