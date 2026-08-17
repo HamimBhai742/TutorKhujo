@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileCheck,
   FileX,
@@ -10,14 +11,61 @@ import {
   CheckCircle,
   Eye
 } from "lucide-react";
-import { MOCK_ADMIN_VERIFICATIONS, TutorVerification } from "@/data/adminDashboard";
+import { TutorVerification } from "@/data/adminDashboard";
+import api from "@/lib/api";
 
 export default function AdminVerificationsClient() {
-  const [verifications, setVerifications] = useState<TutorVerification[]>(MOCK_ADMIN_VERIFICATIONS);
+  const [verifications, setVerifications] = useState<TutorVerification[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedApp, setSelectedApp] = useState<TutorVerification | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const response = await api.get("/user/verifications");
+        if (active) {
+          setVerifications(response.data.data);
+        }
+      } catch (err: any) {
+        if (active) {
+          console.error("Error fetching verifications:", err);
+          setError(
+            err.response?.data?.message || 
+            "Failed to retrieve tutor verification applications."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleStatusChange = async (id: string, newStatus: "Approved" | "Rejected") => {
+    try {
+      await api.patch(`/user/${id}/verify`, { status: newStatus });
+      setVerifications((prev) =>
+        prev.map((v) => (v.id === id ? { ...v, status: newStatus } : v))
+      );
+      if (selectedApp?.id === id) {
+        setSelectedApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+      }
+      alert(`Application has been marked as ${newStatus}.`);
+    } catch (err: any) {
+      console.error("Error updating verification status:", err);
+      alert(err.response?.data?.message || "Failed to update verification status.");
+    }
+  };
   const filteredApps = verifications.filter((v) => {
     const matchesSearch =
       v.tutorName.toLowerCase().includes(search.toLowerCase()) ||
@@ -26,16 +74,6 @@ export default function AdminVerificationsClient() {
     const matchesStatus = statusFilter === "all" || v.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const handleStatusChange = (id: string, newStatus: "Approved" | "Rejected") => {
-    setVerifications((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, status: newStatus } : v))
-    );
-    if (selectedApp?.id === id) {
-      setSelectedApp((prev) => (prev ? { ...prev, status: newStatus } : null));
-    }
-    alert(`Application has been marked as ${newStatus}.`);
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -94,7 +132,35 @@ export default function AdminVerificationsClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
-                {filteredApps.length === 0 ? (
+                {loading ? (
+                  [...Array(5)].map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-zinc-200 dark:bg-zinc-850 rounded-md w-24 mb-2" />
+                        <div className="h-3 bg-zinc-150 dark:bg-zinc-800 rounded-md w-32" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-zinc-200 dark:bg-zinc-850 rounded-md w-32 mb-2" />
+                        <div className="h-3 bg-zinc-150 dark:bg-zinc-800 rounded-md w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-4 bg-zinc-200 dark:bg-zinc-850 rounded-md w-20" />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="h-6 bg-zinc-200 dark:bg-zinc-850 rounded-full w-16" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="h-8 bg-zinc-200 dark:bg-zinc-850 rounded-md w-8 inline-block" />
+                      </td>
+                    </tr>
+                  ))
+                ) : error ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-red-650 dark:text-red-450 font-bold">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredApps.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-zinc-400">
                       No applications found.

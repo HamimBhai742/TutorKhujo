@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -8,48 +9,181 @@ import {
   FileText,
   TrendingUp,
   ArrowRight,
-  ShieldAlert,
   CheckCircle,
   XCircle,
   UserCheck,
   Clock,
-  ExternalLink
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
-import {
-  MOCK_ADMIN_USERS,
-  MOCK_ADMIN_VERIFICATIONS,
-  MOCK_ADMIN_TUITION_POSTS,
-  MOCK_ADMIN_TRANSACTIONS,
-  TutorVerification,
-  AdminTuitionPost
-} from "@/data/adminDashboard";
+import { TutorVerification, AdminTuitionPost } from "@/data/adminDashboard";
 import { ROUTES } from "@/constants/routes";
+import api from "@/lib/api";
 
 export default function AdminDashboardClient() {
-  const [verifications, setVerifications] = useState<TutorVerification[]>(
-    MOCK_ADMIN_VERIFICATIONS.filter((v) => v.status === "Pending")
-  );
-  const [tuitions, setTuitions] = useState<AdminTuitionPost[]>(
-    MOCK_ADMIN_TUITION_POSTS.slice(0, 3)
-  );
+  const [stats, setStats] = useState<any>({
+    totalUsers: 0,
+    totalTutors: 0,
+    totalStudents: 0,
+    pendingVerifications: 0,
+    totalTuitions: 0,
+    activeTuitions: 0,
+    totalRevenue: 0,
+  });
+  const [verifications, setVerifications] = useState<TutorVerification[]>([]);
+  const [tuitions, setTuitions] = useState<AdminTuitionPost[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const totalUsers = MOCK_ADMIN_USERS.length;
-  const totalTutors = MOCK_ADMIN_USERS.filter((u) => u.role === "tutor").length;
-  const totalStudents = MOCK_ADMIN_USERS.filter((u) => u.role === "student").length;
-  const totalRevenue = MOCK_ADMIN_TRANSACTIONS
-    .filter((tx) => tx.status === "Success" && tx.type === "Invoice Payment")
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, verificationsRes, tuitionsRes] = await Promise.all([
+          api.get("/user/admin-stats"),
+          api.get("/user/verifications"),
+          api.get("/tuitions?limit=3"),
+        ]);
+        
+        setStats(statsRes.data.data);
+        
+        // Filter pending verifications
+        setVerifications(
+          verificationsRes.data.data.filter((v: any) => v.status === "Pending")
+        );
+        
+        // Map tuition posts
+        const mappedTuitions = tuitionsRes.data.data.map((p: any) => ({
+          id: p.id,
+          studentName: p.student?.name || "N/A",
+          classLevel: p.classLevel,
+          subjects: p.subjects,
+          budget: p.budget,
+          mode: p.mode,
+          frequency: p.frequency,
+          location: p.location,
+          status: p.status,
+          createdAt: p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "N/A",
+        }));
+        setTuitions(mappedTuitions);
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const handleApprove = (id: string, name: string) => {
-    setVerifications((prev) => prev.filter((v) => v.id !== id));
-    alert(`Success! Tutor ${name} has been verified successfully.`);
+  const handleApprove = async (id: string, name: string) => {
+    try {
+      await api.patch(`/user/${id}/verify`, { status: "Approved" });
+      setVerifications((prev) => prev.filter((v) => v.id !== id));
+      setStats((prev: any) => ({
+        ...prev,
+        pendingVerifications: Math.max(0, prev.pendingVerifications - 1),
+        totalTutors: prev.totalTutors + 1 // if verified they count as active verified tutor
+      }));
+      alert(`Success! Tutor ${name} has been verified successfully.`);
+    } catch (err: any) {
+      console.error("Error verifying tutor:", err);
+      alert(err.response?.data?.message || "Failed to approve verification request.");
+    }
   };
 
-  const handleReject = (id: string, name: string) => {
-    setVerifications((prev) => prev.filter((v) => v.id !== id));
-    alert(`Tutor ${name}'s verification request was rejected.`);
+  const handleReject = async (id: string, name: string) => {
+    try {
+      await api.patch(`/user/${id}/verify`, { status: "Rejected" });
+      setVerifications((prev) => prev.filter((v) => v.id !== id));
+      setStats((prev: any) => ({
+        ...prev,
+        pendingVerifications: Math.max(0, prev.pendingVerifications - 1)
+      }));
+      alert(`Tutor ${name}'s verification request was rejected.`);
+    } catch (err: any) {
+      console.error("Error rejecting tutor:", err);
+      alert(err.response?.data?.message || "Failed to reject verification request.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-300">
+        {/* Title Header Skeleton */}
+        <div>
+          <div className="h-9 bg-zinc-200 dark:bg-zinc-800 rounded-md w-48 animate-pulse" />
+          <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded-md w-96 mt-2 animate-pulse" />
+        </div>
+
+        {/* KPI Stats Grid Skeleton */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-850 dark:bg-zinc-900 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-4 bg-zinc-300 dark:bg-zinc-700 rounded-md w-24" />
+                <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-8 bg-zinc-300 dark:bg-zinc-700 rounded-md w-16" />
+                <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Grid Skeleton */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Pending Verifications Panel Skeleton */}
+          <div className="lg:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-850 dark:bg-zinc-900 animate-pulse space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="h-6 bg-zinc-350 dark:bg-zinc-750 rounded-md w-48" />
+              <div className="h-4 bg-zinc-250 dark:bg-zinc-800 rounded-md w-16" />
+            </div>
+            <div className="space-y-4 divide-y divide-zinc-100 dark:divide-zinc-800">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="pt-4 first:pt-0 flex justify-between items-center">
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-zinc-300 dark:bg-zinc-700 rounded-md w-1/3" />
+                    <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-1/2" />
+                    <div className="flex gap-1.5 mt-2">
+                      <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded-md w-12" />
+                      <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded-md w-16" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="w-20 h-9 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+                    <div className="w-20 h-9 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Tuition Posts Panel Skeleton */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-850 dark:bg-zinc-900 animate-pulse space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="h-6 bg-zinc-350 dark:bg-zinc-750 rounded-md w-32" />
+              <div className="h-4 bg-zinc-250 dark:bg-zinc-800 rounded-md w-16" />
+            </div>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="border border-zinc-100 dark:border-zinc-800 p-4 rounded-xl space-y-3">
+                  <div className="flex justify-between">
+                    <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-12" />
+                    <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded-md w-12" />
+                  </div>
+                  <div className="h-4 bg-zinc-300 dark:bg-zinc-700 rounded-md w-2/3" />
+                  <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-1/2" />
+                  <div className="flex justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                    <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-16" />
+                    <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded-md w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -79,12 +213,12 @@ export default function AdminDashboardClient() {
           </div>
           <div className="mt-4">
             <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-              {totalUsers}
+              {stats.totalUsers}
             </span>
             <div className="mt-2 text-xs font-bold text-zinc-400 flex gap-2">
-              <span>{totalTutors} Tutors</span>
+              <span>{stats.totalTutors} Tutors</span>
               <span>•</span>
-              <span>{totalStudents} Students</span>
+              <span>{stats.totalStudents} Students</span>
             </div>
           </div>
         </div>
@@ -101,7 +235,7 @@ export default function AdminDashboardClient() {
           </div>
           <div className="mt-4">
             <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-              {verifications.length}
+              {stats.pendingVerifications}
             </span>
             <div className="mt-2 text-xs font-bold text-orange-500 flex items-center gap-1">
               <Clock size={14} />
@@ -122,10 +256,10 @@ export default function AdminDashboardClient() {
           </div>
           <div className="mt-4">
             <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-              {MOCK_ADMIN_TUITION_POSTS.length}
+              {stats.totalTuitions}
             </span>
             <div className="mt-2 text-xs font-bold text-zinc-400">
-              {MOCK_ADMIN_TUITION_POSTS.filter((p) => p.status === "Active").length} Active Listings
+              {stats.activeTuitions} Active Listings
             </div>
           </div>
         </div>
@@ -142,7 +276,7 @@ export default function AdminDashboardClient() {
           </div>
           <div className="mt-4">
             <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-              ৳ {totalRevenue.toLocaleString()}
+              ৳ {stats.totalRevenue.toLocaleString()}
             </span>
             <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
               <TrendingUp size={14} />

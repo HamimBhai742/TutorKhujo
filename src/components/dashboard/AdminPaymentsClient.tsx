@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Clock,
@@ -8,14 +9,74 @@ import {
   ArrowUpRight,
   RefreshCw
 } from "lucide-react";
-import { MOCK_ADMIN_TRANSACTIONS, AdminTransaction } from "@/data/adminDashboard";
+import { AdminTransaction } from "@/data/adminDashboard";
+import api from "@/lib/api";
 
 export default function AdminPaymentsClient() {
-  const [transactions, setTransactions] = useState<AdminTransaction[]>(MOCK_ADMIN_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get("/payments");
+      setTransactions(response.data.data);
+    } catch (err: any) {
+      console.error("Error fetching transactions:", err);
+      setError(
+        err.response?.data?.message || 
+        "Failed to retrieve transaction records."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const response = await api.get("/payments");
+        if (active) {
+          setTransactions(response.data.data);
+        }
+      } catch (err: any) {
+        if (active) {
+          console.error("Error fetching transactions:", err);
+          setError(
+            err.response?.data?.message || 
+            "Failed to retrieve transaction records."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleProcessPayout = async (id: string, name: string) => {
+    try {
+      await api.patch(`/payments/${id}/payout`);
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: "Success" } : t))
+      );
+      alert(`Success! Payout to tutor ${name} has been processed.`);
+    } catch (err: any) {
+      console.error("Error processing payout:", err);
+      alert(err.response?.data?.message || "Failed to process payout.");
+    }
+  };
   const filteredTransactions = transactions.filter((t) => {
     const matchesSearch =
       t.userName.toLowerCase().includes(search.toLowerCase()) ||
@@ -36,13 +97,6 @@ export default function AdminPaymentsClient() {
   const pendingPayouts = transactions
     .filter((t) => t.type === "Tutor Payout" && t.status === "Pending")
     .reduce((sum, t) => sum + t.amount, 0);
-
-  const handleProcessPayout = (id: string, name: string) => {
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: "Success" } : t))
-    );
-    alert(`Success! Payout to tutor ${name} has been processed.`);
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -164,105 +218,143 @@ export default function AdminPaymentsClient() {
       </div>
 
       {/* Transaction Log Table */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-850 dark:bg-zinc-900 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm text-zinc-500 dark:text-zinc-400">
-            <thead className="bg-zinc-50 text-xs font-black uppercase tracking-wider text-zinc-450 dark:bg-zinc-950 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800">
-              <tr>
-                <th className="px-6 py-4">Transaction Details</th>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Amount</th>
-                <th className="px-6 py-4">Method</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
-              {filteredTransactions.length === 0 ? (
+      {loading ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-850 dark:bg-zinc-900 shadow-sm">
+          <svg
+            className="h-10 w-10 animate-spin text-[#0F5B47] dark:text-[#188c6e]"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <p className="text-sm font-semibold text-zinc-550 dark:text-zinc-400">
+            Retrieving transaction records...
+          </p>
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border border-red-150 bg-red-50/20 p-8 text-center dark:border-red-950/20 dark:bg-red-950/10">
+          <p className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>
+          <button
+            onClick={fetchTransactions}
+            className="mt-4 rounded-xl bg-[#0F5B47] hover:bg-[#0c4a39] px-5 py-2.5 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+          >
+            Reload Transactions
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-850 dark:bg-zinc-900 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm text-zinc-500 dark:text-zinc-400">
+              <thead className="bg-zinc-50 text-xs font-black uppercase tracking-wider text-zinc-450 dark:bg-zinc-950 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800">
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-400">
-                    No transactions found.
-                  </td>
+                  <th className="px-6 py-4">Transaction Details</th>
+                  <th className="px-6 py-4">User</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4">Amount</th>
+                  <th className="px-6 py-4">Method</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Action</th>
                 </tr>
-              ) : (
-                filteredTransactions.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-all"
-                  >
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                          {tx.type === "Invoice Payment" ? (
-                            <span className="text-emerald-650 flex items-center gap-0.5">
-                              <ArrowDownLeft size={14} /> Student Inflow
-                            </span>
-                          ) : (
-                            <span className="text-blue-650 flex items-center gap-0.5">
-                              <ArrowUpRight size={14} /> Tutor Outflow
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-zinc-400 dark:text-zinc-500">
-                          Ref: {tx.reference}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-semibold text-zinc-700 dark:text-zinc-355">
-                          {tx.userName}
-                        </div>
-                        <div className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
-                          {tx.userRole}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-zinc-450 dark:text-zinc-500">
-                      {tx.date}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-black text-zinc-900 dark:text-white">
-                        ৳ {tx.amount}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-zinc-655 dark:text-zinc-300">
-                      {tx.method}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          tx.status === "Success"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                            : tx.status === "Pending"
-                            ? "bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400"
-                            : "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {tx.type === "Tutor Payout" && tx.status === "Pending" ? (
-                        <button
-                          onClick={() => handleProcessPayout(tx.id, tx.userName)}
-                          className="rounded-xl bg-[#0F5B47] hover:bg-[#0F5B47]/90 text-white dark:bg-[#188c6e] dark:hover:bg-[#188c6e]/90 px-3.5 py-1.5 text-xs font-bold transition-all shadow-sm inline-flex items-center gap-1 ml-auto"
-                        >
-                          <RefreshCw size={12} className="animate-spin-hover" />
-                          Process Payout
-                        </button>
-                      ) : (
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-bold">—</span>
-                      )}
+              </thead>
+              <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-zinc-400">
+                      No transactions found.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredTransactions.map((tx) => (
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-all"
+                    >
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            {tx.type === "Invoice Payment" ? (
+                              <span className="text-emerald-650 flex items-center gap-0.5">
+                                <ArrowDownLeft size={14} /> Student Inflow
+                              </span>
+                            ) : (
+                              <span className="text-blue-650 flex items-center gap-0.5">
+                                <ArrowUpRight size={14} /> Tutor Outflow
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                            Ref: {tx.reference}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="font-semibold text-zinc-700 dark:text-zinc-355">
+                            {tx.userName}
+                          </div>
+                          <div className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
+                            {tx.userRole}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-zinc-450 dark:text-zinc-500">
+                        {tx.date}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-black text-zinc-900 dark:text-white">
+                          ৳ {tx.amount}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-zinc-655 dark:text-zinc-300">
+                        {tx.method}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            tx.status === "Success"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
+                              : tx.status === "Pending"
+                              ? "bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400"
+                              : "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {tx.type === "Tutor Payout" && tx.status === "Pending" ? (
+                          <button
+                            onClick={() => handleProcessPayout(tx.id, tx.userName)}
+                            className="rounded-xl bg-[#0F5B47] hover:bg-[#0F5B47]/90 text-white dark:bg-[#188c6e] dark:hover:bg-[#188c6e]/90 px-3.5 py-1.5 text-xs font-bold transition-all shadow-sm inline-flex items-center gap-1 ml-auto"
+                          >
+                            <RefreshCw size={12} className="animate-spin-hover" />
+                            Process Payout
+                          </button>
+                        ) : (
+                          <span className="text-xs text-zinc-400 dark:text-zinc-500 font-bold">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

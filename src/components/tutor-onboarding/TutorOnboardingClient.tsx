@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +11,7 @@ import PersonalInfoStep from "./steps/PersonalInfoStep";
 import EducationStep from "./steps/EducationStep";
 import PreferencesStep from "./steps/PreferencesStep";
 import ExperienceStep from "./steps/ExperienceStep";
+import api from "@/lib/api";
 
 // Types
 interface Qualification {
@@ -124,7 +126,7 @@ export default function TutorOnboardingClient() {
   }, [user]);
 
   // Save Progress Function
-  const saveProgress = (silent = false) => {
+  const saveProgress = async (silent = false) => {
     if (typeof window !== "undefined") {
       const dataToSave = {
         fullName, dob, gender, city, bio,
@@ -132,8 +134,17 @@ export default function TutorOnboardingClient() {
         totalYearsExp, experiences, profilePic
       };
       localStorage.setItem("tutor_onboarding_data", JSON.stringify(dataToSave));
-      if (!silent) {
-        alert("Progress saved successfully! You can resume or edit anytime.");
+      
+      try {
+        await api.patch("/user/me/onboard", dataToSave);
+        if (!silent) {
+          alert("Progress saved successfully to database!");
+        }
+      } catch (err: any) {
+        console.error("Failed to save progress to server:", err);
+        if (!silent) {
+          alert(err.response?.data?.message || "Failed to save progress to server.");
+        }
       }
     }
   };

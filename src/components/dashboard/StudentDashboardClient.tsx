@@ -138,53 +138,6 @@ export default function StudentDashboardClient() {
     }
   }, []);
 
-  // Fetch received tutor applications from backend
-  const fetchMyApplications = useCallback(async () => {
-    try {
-      const response = await api.get("/tuitions/my-applications");
-      const rawApps = response.data?.data || [];
-
-      if (rawApps.length > 0) {
-        const bgColors = [
-          "bg-emerald-600",
-          "bg-rose-600",
-          "bg-indigo-600",
-          "bg-amber-600",
-          "bg-blue-600",
-          "bg-teal-600",
-        ];
-
-        const formatted: TutorApplication[] = rawApps.map((a: any, idx: number) => ({
-          id: a.id,
-          postId: a.tuitionPostId,
-          tutorId: a.tutorId,
-          tutorName: a.tutor?.name || "Tutor",
-          institution: "Verified Tutor",
-          subject:
-            (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
-            a.tuitionPost?.classLevel ||
-            "Tuition",
-          rating: 5.0,
-          salaryBid: a.salaryBid,
-          avatarBg: bgColors[idx % bgColors.length],
-          location: a.tuitionPost?.location || "Dhaka",
-          appliedDate: a.createdAt
-            ? new Date(a.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })
-            : "Recently",
-          status: a.status || "Pending",
-        }));
-
-        setApplications(formatted);
-      }
-    } catch (err) {
-      console.error("Failed to load applications:", err);
-    }
-  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -499,7 +452,7 @@ export default function StudentDashboardClient() {
       if (targetPost) {
         try {
           await api.patch(`/tuitions/${targetPost.id}/status`, { status: "Paused" });
-        } catch (_) {}
+        } catch {}
       }
       showToast(
         "success",
