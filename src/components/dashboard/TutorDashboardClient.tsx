@@ -20,9 +20,15 @@ import {
   ArrowLeft,
   Send,
   MessageSquare,
-  Loader2
+  Loader2,
+  Edit3,
+  Trash2,
+  Ban,
+  ShieldAlert,
+  ShieldCheck
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
+import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -52,6 +58,10 @@ export default function TutorDashboardClient() {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [myUserId, setMyUserId] = useState<string>("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState<string>("");
+  const [isEditingSaving, setIsEditingSaving] = useState<boolean>(false);
+  const [showDeleteConvModal, setShowDeleteConvModal] = useState<boolean>(false);
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,6 +70,8 @@ export default function TutorDashboardClient() {
   const setActiveChatId = (id: string) => {
     activeChatIdRef.current = id;
     setActiveChatIdState(id);
+    setEditingMessageId(null);
+    setEditingMessageText("");
 
     // Join conversation room
     socketRef.current?.emit("join_conversation", id);
@@ -80,6 +92,79 @@ export default function TutorDashboardClient() {
         recipientId: conv.recipientId,
       });
     }
+  };
+
+  const isMessageEligibleForAction = (createdAt?: string | Date) => {
+    if (!createdAt) return true;
+    const age = Date.now() - new Date(createdAt).getTime();
+    return age <= 30 * 60 * 1000;
+  };
+
+  const handleEditMessage = async (msgId: string) => {
+    if (!editingMessageText.trim() || isEditingSaving) return;
+    try {
+      setIsEditingSaving(true);
+      await api.patch(`/messages/${msgId}`, { content: editingMessageText.trim() });
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChatId
+            ? {
+                ...c,
+                messages: c.messages?.map((m) =>
+                  m.id === msgId ? { ...m, content: editingMessageText.trim() } : m
+                ),
+              }
+            : c
+        )
+      );
+      setEditingMessageId(null);
+      setEditingMessageText("");
+    } catch (_) {
+    } finally {
+      setIsEditingSaving(false);
+    }
+  };
+
+  const handleDeleteMessage = async (msgId: string) => {
+    try {
+      await api.delete(`/messages/${msgId}`);
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChatId
+            ? {
+                ...c,
+                messages: c.messages?.filter((m) => m.id !== msgId),
+              }
+            : c
+        )
+      );
+    } catch (_) {}
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!activeChatId) return;
+    try {
+      await api.delete(`/messages/conversations/${activeChatId}`);
+      setChats((prev) => prev.filter((c) => c.id !== activeChatId));
+      setActiveChatIdState("");
+      activeChatIdRef.current = "";
+      setShowDeleteConvModal(false);
+    } catch (_) {}
+  };
+
+  const handleToggleBlock = async () => {
+    if (!activeChatId) return;
+    try {
+      const res = await api.patch(`/messages/conversations/block/${activeChatId}`);
+      const updated = res.data.data;
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChatId
+            ? { ...c, isBlocked: updated.isBlocked, blockedById: updated.blockedById }
+            : c
+        )
+      );
+    } catch (_) {}
   };
 
   const activeChat = chats.find((c) => c.id === activeChatId);
@@ -183,9 +268,23 @@ export default function TutorDashboardClient() {
     try {
       setMessagesLoading(true);
       const res = await api.get(`/messages/${convId}`);
+      const data = res.data?.data;
+      const messageList = Array.isArray(data) ? data : (data?.messages || []);
+      const isBlocked = data?.isBlocked;
+      const blockedById = data?.blockedById;
+
       if (!signal?.isCancelled) {
         setChats((prev) =>
-          prev.map((c) => (c.id === convId ? { ...c, messages: res.data.data } : c))
+          prev.map((c) =>
+            c.id === convId
+              ? {
+                  ...c,
+                  messages: messageList,
+                  isBlocked: isBlocked !== undefined ? isBlocked : c.isBlocked,
+                  blockedById: blockedById !== undefined ? blockedById : c.blockedById,
+                }
+              : c
+          )
         );
       }
     } catch (err) {
@@ -272,7 +371,57 @@ export default function TutorDashboardClient() {
         );
       });
 
-      // Incoming message listener
+      // Message edit/update listener
+      socket.on("message_updated", (payload: { messageId: string; conversationId: string; content: string }) => {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === payload.conversationId
+              ? {
+                  ...c,
+                  messages: c.messages?.map((m) =>
+                    m.id === payload.messageId ? { ...m, content: payload.content } : m
+                  ),
+                }
+              : c
+          )
+        );
+      });
+
+      // Message delete listener
+      socket.on("message_deleted", (payload: { messageId: string; conversationId: string }) => {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === payload.conversationId
+              ? {
+                  ...c,
+                  messages: c.messages?.filter((m) => m.id !== payload.messageId),
+                }
+              : c
+          )
+        );
+      });
+
+      // Conversation deleted listener
+      socket.on("conversation_deleted", (payload: { conversationId: string }) => {
+        setChats((prev) => prev.filter((c) => c.id !== payload.conversationId));
+        if (activeChatIdRef.current === payload.conversationId) {
+          setActiveChatIdState("");
+          activeChatIdRef.current = "";
+        }
+      });
+
+      // Block status listener
+      socket.on("block_status_changed", (payload: { conversationId: string; isBlocked: boolean; blockedById?: string }) => {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === payload.conversationId
+              ? { ...c, isBlocked: payload.isBlocked, blockedById: payload.blockedById }
+              : c
+          )
+        );
+      });
+
+      // Incoming message listener (with strict deduplication)
       socket.on("incoming_message", (payload: any) => {
         const currentActiveChatId = activeChatIdRef.current;
         const isCurrentActive = payload.conversationId === currentActiveChatId;
@@ -291,23 +440,28 @@ export default function TutorDashboardClient() {
         setChats((prev) =>
           prev.map((c) => {
             if (c.id === payload.conversationId) {
-              const updatedMessages = isCurrentActive
+              const existingList = c.messages || [];
+              const isAlreadyInList = existingList.some((m) => m.id === payload.id);
+              const updatedMessages = isAlreadyInList
+                ? existingList
+                : isCurrentActive
                 ? [
-                    ...(c.messages || []),
+                    ...existingList,
                     {
                       id: payload.id,
                       sender: payload.sender,
                       content: payload.content,
                       time: payload.time,
+                      createdAt: payload.createdAt,
                     },
                   ]
-                : c.messages || [];
+                : existingList;
 
               return {
                 ...c,
                 lastMessage: payload.content,
                 time: payload.time,
-                unreadCount: isCurrentActive ? 0 : (c.unreadCount || 0) + 1,
+                unreadCount: isCurrentActive ? 0 : (c.unreadCount || 0) + (isAlreadyInList ? 0 : 1),
                 messages: updatedMessages,
               };
             }
@@ -343,6 +497,7 @@ export default function TutorDashboardClient() {
         id: res.data.data.id,
         sender: "tutor",
         content: textToSend,
+        createdAt: res.data.data.createdAt || new Date().toISOString(),
         time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
       };
 
@@ -353,7 +508,10 @@ export default function TutorDashboardClient() {
               ...c,
               lastMessage: textToSend,
               time: "Just Now",
-              messages: [...(c.messages || []), newMsg],
+              messages: [
+                ...(c.messages?.filter((m) => m.id !== newMsg.id) || []),
+                newMsg,
+              ],
             };
           }
           return c;
@@ -841,16 +999,21 @@ export default function TutorDashboardClient() {
                               <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-emerald-400" />
                             )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex justify-between items-baseline mb-0.5">
-                              <h4 className="text-xs font-black text-zinc-850 dark:text-white truncate">
-                                {chat.studentName}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center mb-1">
+                              <h4 className="text-xs font-black text-zinc-850 dark:text-white truncate flex items-center gap-1.5">
+                                <span>{chat.studentName}</span>
+                                {chat.isBlocked && (
+                                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                                    Blocked
+                                  </span>
+                                )}
                               </h4>
                               <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold shrink-0">
                                 {chat.time}
                               </span>
                             </div>
-                            <p className={`text-[10px] truncate font-semibold ${
+                            <p className={`text-[10px] truncate font-medium ${
                               isTyping
                                 ? "text-emerald-600 dark:text-emerald-400 font-bold animate-pulse"
                                 : "text-zinc-500 dark:text-zinc-450"
@@ -879,6 +1042,7 @@ export default function TutorDashboardClient() {
                 const currentChat = chats.find((c) => c.id === activeChatId);
                 const isOnline = currentChat?.recipientId ? onlineUsers.has(currentChat.recipientId) : false;
                 const isTyping = currentChat ? typingUsers[currentChat.id] : false;
+                const isBlockedByMe = currentChat?.isBlocked && currentChat?.blockedById === myUserId;
 
                 if (!currentChat) {
                   return (
@@ -908,15 +1072,22 @@ export default function TutorDashboardClient() {
                           <div className={`w-10 h-10 rounded-full ${currentChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs`}>
                             {currentChat.studentName.charAt(0).toUpperCase()}
                           </div>
-                          {isOnline && (
+                          {currentChat.isBlocked ? (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-rose-400" />
+                          ) : isOnline ? (
                             <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-emerald-400" />
-                          )}
+                          ) : null}
                         </div>
                         <div>
                           <h4 className="text-xs font-black text-zinc-850 dark:text-white leading-tight">
                             {currentChat.studentName}
                           </h4>
-                          {isTyping ? (
+                          {currentChat.isBlocked ? (
+                            <span className="text-[10px] font-black flex items-center gap-1.5 mt-0.5 text-rose-600 dark:text-rose-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                              {isBlockedByMe ? "Blocked by you • Chat suspended" : "You are blocked • Chat suspended"}
+                            </span>
+                          ) : isTyping ? (
                             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1.5 mt-0.5">
                               <span className="inline-flex items-center gap-0.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -934,6 +1105,44 @@ export default function TutorDashboardClient() {
                             </span>
                           )}
                         </div>
+                      </div>
+
+                      {/* Header Actions */}
+                      <div className="flex items-center gap-2">
+                        {currentChat.isBlocked ? (
+                          isBlockedByMe ? (
+                            <button
+                              onClick={handleToggleBlock}
+                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-2xs"
+                              title="Unblock Contact"
+                            >
+                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                              <span>Unblock</span>
+                            </button>
+                          ) : (
+                            <div className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 rounded-lg text-[10px] font-black flex items-center gap-1">
+                              <Ban className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Blocked</span>
+                            </div>
+                          )
+                        ) : (
+                          <button
+                            onClick={handleToggleBlock}
+                            className="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                            title="Block Contact"
+                          >
+                            <Ban className="w-4 h-4" />
+                            <span className="hidden sm:inline text-[11px]">Block</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setShowDeleteConvModal(true)}
+                          className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                          title="Delete Conversation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden sm:inline text-[11px]">Delete Chat</span>
+                        </button>
                       </div>
                     </div>
 
@@ -963,20 +1172,86 @@ export default function TutorDashboardClient() {
                         <>
                           {currentChat.messages?.map((msg) => {
                             const isTutor = msg.sender === "tutor";
+                            const isEditingThis = editingMessageId === msg.id;
+                            const isEligible = isMessageEligibleForAction(msg.createdAt);
+
                             return (
                               <div
                                 key={msg.id}
-                                className={`flex flex-col ${isTutor ? "items-end" : "items-start"} animate-in fade-in slide-in-from-bottom-1 duration-200`}
+                                className={`flex flex-col group ${isTutor ? "items-end" : "items-start"} animate-in fade-in slide-in-from-bottom-1 duration-200`}
                               >
-                                <div
-                                  className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-2xs ${
-                                    isTutor
-                                      ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-xs"
-                                      : "bg-white dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
-                                  }`}
-                                >
-                                  {msg.content}
-                                </div>
+                                {isEditingThis ? (
+                                  <div className="flex items-center gap-2 max-w-md w-full bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border-2 border-[#0F5B47] shadow-md animate-in fade-in zoom-in-95 duration-150">
+                                    <input
+                                      type="text"
+                                      value={editingMessageText}
+                                      onChange={(e) => setEditingMessageText(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !isEditingSaving) handleEditMessage(msg.id);
+                                        if (e.key === "Escape" && !isEditingSaving) setEditingMessageId(null);
+                                      }}
+                                      disabled={isEditingSaving}
+                                      autoFocus
+                                      className="flex-1 px-3 py-1.5 bg-transparent text-xs font-semibold outline-hidden text-zinc-900 dark:text-white"
+                                    />
+                                    <button
+                                      onClick={() => handleEditMessage(msg.id)}
+                                      disabled={isEditingSaving || !editingMessageText.trim()}
+                                      className="p-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl cursor-pointer transition-all shrink-0 flex items-center justify-center"
+                                      title="Save Changes"
+                                    >
+                                      {isEditingSaving ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingMessageId(null)}
+                                      disabled={isEditingSaving}
+                                      className="p-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl cursor-pointer transition-all shrink-0"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="relative group flex items-center gap-2">
+                                    {/* Action buttons for tutor's own messages (only if within 30 min) */}
+                                    {isTutor && isEligible && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0">
+                                        <button
+                                          onClick={() => {
+                                            setEditingMessageId(msg.id);
+                                            setEditingMessageText(msg.content);
+                                          }}
+                                          className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                                          title="Edit message (within 30m)"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteMessage(msg.id)}
+                                          className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
+                                          title="Unsend message (within 30m)"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div
+                                      className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-2xs ${
+                                        isTutor
+                                          ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-xs"
+                                          : "bg-white dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
+                                      }`}
+                                    >
+                                      {msg.content}
+                                    </div>
+                                  </div>
+                                )}
+
                                 <div className="flex items-center gap-1 mt-1 px-1 text-[9px] font-bold text-zinc-400">
                                   <span>{msg.time}</span>
                                   {isTutor && (
@@ -990,7 +1265,7 @@ export default function TutorDashboardClient() {
                           })}
 
                           {/* Real-time Messenger-style typing bubble */}
-                          {isTyping && (
+                          {isTyping && !currentChat.isBlocked && (
                             <div className="flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
                               <div className={`w-7 h-7 rounded-full ${currentChat.avatarBg || "bg-emerald-600"} text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs mb-1 shrink-0`}>
                                 {currentChat.studentName.charAt(0).toUpperCase()}
@@ -1006,54 +1281,75 @@ export default function TutorDashboardClient() {
                       )}
                     </div>
 
-                    {/* Bottom Input Area */}
-                    <form
-                      onSubmit={(e) => {
-                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                        if (socketRef.current && currentChat?.id) {
-                          socketRef.current.emit("typing_stop", {
-                            conversationId: currentChat.id,
-                            recipientId: currentChat.recipientId,
-                          });
-                        }
-                        handleSendMessage(e);
-                      }}
-                      className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
-                    >
-                      <input
-                        type="text"
-                        placeholder="Write a message..."
-                        value={newMessageText}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNewMessageText(val);
+                    {/* Chat Input or Blocked Banner */}
+                    {currentChat.isBlocked ? (
+                      <div className="p-4 bg-amber-50/60 dark:bg-amber-950/20 border-t border-amber-200/50 dark:border-amber-900/40 flex flex-col sm:flex-row items-center justify-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-bold">
+                          <Ban className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>
+                            {currentChat.blockedById === myUserId
+                              ? "You have blocked this contact. Unblock to send and receive messages."
+                              : "You cannot send messages to this contact because you have been blocked."}
+                          </span>
+                        </div>
+                        {currentChat.blockedById === myUserId && (
+                          <button
+                            onClick={handleToggleBlock}
+                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer shadow-xs shrink-0"
+                          >
+                            Unblock Contact
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <form
+                        onSubmit={(e) => {
+                          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
                           if (socketRef.current && currentChat?.id) {
-                            socketRef.current.emit("typing_start", {
+                            socketRef.current.emit("typing_stop", {
                               conversationId: currentChat.id,
                               recipientId: currentChat.recipientId,
                             });
-                            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                            typingTimeoutRef.current = setTimeout(() => {
-                              socketRef.current?.emit("typing_stop", {
+                          }
+                          handleSendMessage(e);
+                        }}
+                        className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Write a message..."
+                          value={newMessageText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewMessageText(val);
+                            if (socketRef.current && currentChat?.id) {
+                              socketRef.current.emit("typing_start", {
                                 conversationId: currentChat.id,
                                 recipientId: currentChat.recipientId,
                               });
-                            }, 1500);
-                          }
-                        }}
-                        className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-2xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-900 dark:text-white"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        disabled={!newMessageText.trim()}
-                        className="px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] disabled:opacity-50 text-white text-xs font-extrabold uppercase rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
-                        title="Send Message"
-                      >
-                        <Send className="w-3.5 h-3.5 text-white" />
-                        <span>Send</span>
-                      </button>
-                    </form>
+                              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                              typingTimeoutRef.current = setTimeout(() => {
+                                socketRef.current?.emit("typing_stop", {
+                                  conversationId: currentChat.id,
+                                  recipientId: currentChat.recipientId,
+                                });
+                              }, 1500);
+                            }
+                          }}
+                          className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-2xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-900 dark:text-white"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newMessageText.trim()}
+                          className="px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] disabled:opacity-50 text-white text-xs font-extrabold uppercase rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                          title="Send Message"
+                        >
+                          <Send className="w-3.5 h-3.5 text-white" />
+                          <span>Send</span>
+                        </button>
+                      </form>
+                    )}
                   </div>
                 );
               })()}
@@ -1291,6 +1587,17 @@ export default function TutorDashboardClient() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Deleting Conversation */}
+      <ConfirmationModal
+        isOpen={showDeleteConvModal}
+        title="Delete Entire Conversation?"
+        message="This will permanently delete this conversation and all messages for both parties. This action cannot be undone."
+        confirmText="Delete Conversation"
+        variant="danger"
+        onConfirm={handleDeleteConversation}
+        onClose={() => setShowDeleteConvModal(false)}
+      />
 
     </div>
   );

@@ -167,6 +167,7 @@ export interface ChatMessage {
   sender: "tutor" | "student";
   content: string;
   time: string;
+  createdAt?: string | Date;
   isRead?: boolean;
 }
 
@@ -179,6 +180,8 @@ export interface ChatContact {
   lastMessage: string;
   time: string;
   unreadCount: number;
+  isBlocked?: boolean;
+  blockedById?: string;
   messages: ChatMessage[];
 }
 
