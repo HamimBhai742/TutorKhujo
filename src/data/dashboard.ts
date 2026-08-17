@@ -162,6 +162,12 @@ export const MOCK_PAYOUTS: Payout[] = [
   }
 ];
 
+export interface MessageReactionItem {
+  id?: string;
+  userId: string;
+  emoji: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: "tutor" | "student";
@@ -169,6 +175,7 @@ export interface ChatMessage {
   time: string;
   createdAt?: string | Date;
   isRead?: boolean;
+  reactions?: MessageReactionItem[];
 }
 
 export interface ChatContact {

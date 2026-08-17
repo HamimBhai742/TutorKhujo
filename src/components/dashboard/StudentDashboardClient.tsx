@@ -35,7 +35,10 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
-  Ban
+  Ban,
+  ArrowLeft,
+  Smile,
+  MoreHorizontal
 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
@@ -46,7 +49,8 @@ import {
   TutorApplication,
   Invoice,
   ChatContact,
-  ChatMessage
+  ChatMessage,
+  MessageReactionItem
 } from "@/data/dashboard";
 import { Tutor, MOCK_TUTORS } from "@/data/tutors";
 
@@ -79,16 +83,20 @@ export default function StudentDashboardClient() {
   
   const [activeChatId, setActiveChatIdState] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
+  const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
   const [myUserId, setMyUserId] = useState<string>("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState<string>("");
   const [isEditingSaving, setIsEditingSaving] = useState<boolean>(false);
+  const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<string | null>(null);
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
   const [showDeleteConvModal, setShowDeleteConvModal] = useState<boolean>(false);
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
@@ -100,6 +108,7 @@ export default function StudentDashboardClient() {
   const setActiveChatId = (id: string) => {
     activeChatIdRef.current = id;
     setActiveChatIdState(id);
+    setChatMobileView("chat");
     setEditingMessageId(null);
     setEditingMessageText("");
 
@@ -173,6 +182,65 @@ export default function StudentDashboardClient() {
       showToast("success", "Message unsent");
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Failed to delete message");
+    }
+  };
+
+  const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
+
+  const handleToggleReaction = async (msgId: string, emoji: string) => {
+    if (!activeChatId) return;
+    setActiveReactionPickerMsgId(null);
+
+    // Optimistically update reactions
+    setChats((prev) =>
+      prev.map((c) => {
+        if (c.id === activeChatId) {
+          return {
+            ...c,
+            messages: c.messages?.map((m) => {
+              if (m.id === msgId) {
+                const currentReactions = m.reactions || [];
+                const existingIdx = currentReactions.findIndex((r) => r.userId === myUserId);
+                let newReactions: MessageReactionItem[];
+                if (existingIdx >= 0) {
+                  if (currentReactions[existingIdx].emoji === emoji) {
+                    newReactions = currentReactions.filter((_, idx) => idx !== existingIdx);
+                  } else {
+                    newReactions = currentReactions.map((r, idx) =>
+                      idx === existingIdx ? { ...r, emoji } : r
+                    );
+                  }
+                } else {
+                  newReactions = [...currentReactions, { userId: myUserId, emoji }];
+                }
+                return { ...m, reactions: newReactions };
+              }
+              return m;
+            }),
+          };
+        }
+        return c;
+      })
+    );
+
+    try {
+      const res = await api.post(`/messages/${msgId}/react`, { emoji });
+      if (res.data?.data) {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === activeChatId
+              ? {
+                  ...c,
+                  messages: c.messages?.map((m) =>
+                    m.id === msgId ? { ...m, reactions: res.data.data } : m
+                  ),
+                }
+              : c
+          )
+        );
+      }
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update reaction");
     }
   };
 
@@ -567,6 +635,22 @@ export default function StudentDashboardClient() {
           prev.map((c) =>
             c.id === payload.conversationId
               ? { ...c, isBlocked: payload.isBlocked, blockedById: payload.blockedById }
+              : c
+          )
+        );
+      });
+
+      // Reaction updated listener
+      socket.on("message_reaction_updated", (payload: { messageId: string; conversationId: string; reactions: MessageReactionItem[] }) => {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === payload.conversationId
+              ? {
+                  ...c,
+                  messages: c.messages?.map((m) =>
+                    m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m
+                  ),
+                }
               : c
           )
         );
@@ -1526,7 +1610,9 @@ export default function StudentDashboardClient() {
           ) : (
             <div className="flex h-full w-full overflow-hidden">
               {/* Left: Chat Contacts List */}
-              <div className="w-full md:w-80 border-r border-zinc-150/80 dark:border-zinc-900 flex flex-col shrink-0 bg-white dark:bg-zinc-950">
+              <div className={`w-full md:w-80 border-r border-zinc-150/80 dark:border-zinc-900 flex flex-col shrink-0 bg-white dark:bg-zinc-950 ${
+                chatMobileView === "chat" ? "hidden md:flex" : "flex"
+              }`}>
                 <div className="p-4 border-b border-zinc-150/60 dark:border-zinc-900 space-y-3 shrink-0">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
@@ -1634,9 +1720,18 @@ export default function StudentDashboardClient() {
                 }
 
                 return (
-                  <div className="flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10">
+                  <div className={`${
+                    chatMobileView === "list" ? "hidden" : "flex"
+                  } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
                     <div className="px-5 py-3.5 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center justify-between shrink-0 shadow-2xs">
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setChatMobileView("list")}
+                          className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer shrink-0"
+                          title="Back to conversations"
+                        >
+                          <ArrowLeft className="w-4 h-4 stroke-[3px]" />
+                        </button>
                         <div className="relative">
                           <div className={`w-10 h-10 rounded-full ${activeChat.avatarBg || "bg-emerald-600"} text-white font-extrabold text-xs flex items-center justify-center shadow-xs`}>
                             {activeChat.studentName.charAt(0).toUpperCase()}
@@ -1774,38 +1869,186 @@ export default function StudentDashboardClient() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="relative group flex items-center gap-2">
-                                    {/* Action buttons for my own messages (only if within 30 min) */}
-                                    {isMe && isEligible && (
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 shrink-0">
+                                  <div className={`relative flex items-center gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                                    {/* 3-Dot Options Button on hover */}
+                                    {!activeChat.isBlocked && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 relative">
                                         <button
                                           onClick={() => {
-                                            setEditingMessageId(m.id);
-                                            setEditingMessageText(m.content);
+                                            setActiveMenuMsgId(activeMenuMsgId === m.id ? null : m.id);
+                                            setActiveReactionPickerMsgId(null);
                                           }}
-                                          className="p-1.5 text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-                                          title="Edit message (within 30m)"
+                                          className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                                          title="More options"
                                         >
-                                          <Edit3 className="w-3.5 h-3.5" />
+                                          <MoreHorizontal className="w-4 h-4" />
                                         </button>
-                                        <button
-                                          onClick={() => handleDeleteMessage(m.id)}
-                                          className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-                                          title="Unsend message (within 30m)"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+
+                                        {/* 3-Dot Dropdown Menu */}
+                                        {activeMenuMsgId === m.id && (
+                                          <>
+                                            <div
+                                              className="fixed inset-0 z-20 cursor-default"
+                                              onClick={() => setActiveMenuMsgId(null)}
+                                            />
+                                            <div
+                                              className={`absolute bottom-full mb-1 ${
+                                                isMe ? "right-0" : "left-0"
+                                              } w-36 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-150`}
+                                            >
+                                              <button
+                                                onClick={() => {
+                                                  setActiveReactionPickerMsgId(m.id);
+                                                  setActiveMenuMsgId(null);
+                                                }}
+                                                className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 flex items-center gap-2 cursor-pointer"
+                                              >
+                                                <Smile className="w-3.5 h-3.5 text-amber-500" />
+                                                <span>React</span>
+                                              </button>
+
+                                              {isMe && isEligible && (
+                                                <>
+                                                  <button
+                                                    onClick={() => {
+                                                      setEditingMessageId(m.id);
+                                                      setEditingMessageText(m.content);
+                                                      setActiveMenuMsgId(null);
+                                                    }}
+                                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 flex items-center gap-2 cursor-pointer"
+                                                  >
+                                                    <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                                                    <span>Edit</span>
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      handleDeleteMessage(m.id);
+                                                      setActiveMenuMsgId(null);
+                                                    }}
+                                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 cursor-pointer"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                                    <span>Unsend</span>
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     )}
 
-                                    <div
-                                      className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-2xs ${
-                                        isMe
-                                          ? "bg-[#0F5B47] text-white rounded-br-xs"
-                                          : "bg-white dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-bl-xs"
-                                      }`}
-                                    >
-                                      {m.content}
+                                    {/* Floating Messenger Emoji Reaction Bar & Bubble */}
+                                    <div className="relative">
+                                      {activeReactionPickerMsgId === m.id && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-20 cursor-default"
+                                            onClick={() => setActiveReactionPickerMsgId(null)}
+                                          />
+                                          <div
+                                            className={`absolute bottom-full mb-2 ${
+                                              isMe ? "right-0" : "left-0"
+                                            } flex items-center gap-1 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-full px-2.5 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150`}
+                                          >
+                                            {REACTION_EMOJIS.map((emo) => {
+                                              const hasMyReaction = m.reactions?.some(
+                                                (r) => r.userId === myUserId && r.emoji === emo
+                                              );
+                                              return (
+                                                <button
+                                                  key={emo}
+                                                  onClick={() => handleToggleReaction(m.id, emo)}
+                                                  className={`w-7 h-7 flex items-center justify-center rounded-full hover:scale-135 active:scale-110 transition-transform cursor-pointer text-base ${
+                                                    hasMyReaction
+                                                      ? "bg-emerald-100 dark:bg-emerald-950/80 scale-115 shadow-2xs"
+                                                      : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                  }`}
+                                                  title={emo}
+                                                >
+                                                  {emo}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {/* Message Bubble with Press & Hold (Long Press) / Context Menu */}
+                                      <div
+                                        onTouchStart={() => {
+                                          if (!activeChat.isBlocked) {
+                                            longPressTimerRef.current = setTimeout(() => {
+                                              setActiveReactionPickerMsgId(m.id);
+                                              setActiveMenuMsgId(null);
+                                            }, 450);
+                                          }
+                                        }}
+                                        onTouchEnd={() => {
+                                          if (longPressTimerRef.current) {
+                                            clearTimeout(longPressTimerRef.current);
+                                            longPressTimerRef.current = null;
+                                          }
+                                        }}
+                                        onTouchMove={() => {
+                                          if (longPressTimerRef.current) {
+                                            clearTimeout(longPressTimerRef.current);
+                                            longPressTimerRef.current = null;
+                                          }
+                                        }}
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          if (!activeChat.isBlocked) {
+                                            setActiveReactionPickerMsgId(m.id);
+                                          }
+                                        }}
+                                        className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-2xs select-none transition-all ${
+                                          isMe
+                                            ? "bg-[#0F5B47] text-white rounded-br-xs"
+                                            : "bg-white dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-bl-xs"
+                                        }`}
+                                      >
+                                        {m.content}
+                                      </div>
+
+                                      {/* Reaction Badges Pill */}
+                                      {(() => {
+                                        if (!m.reactions || m.reactions.length === 0) return null;
+                                        const grouped: { [emoji: string]: { count: number; hasMine: boolean } } = {};
+                                        m.reactions.forEach((r) => {
+                                          if (!grouped[r.emoji]) {
+                                            grouped[r.emoji] = { count: 0, hasMine: false };
+                                          }
+                                          grouped[r.emoji].count += 1;
+                                          if (r.userId === myUserId) {
+                                            grouped[r.emoji].hasMine = true;
+                                          }
+                                        });
+
+                                        return (
+                                          <div
+                                            className={`absolute -bottom-2.5 ${
+                                              isMe ? "right-2" : "left-2"
+                                            } flex items-center gap-1 z-10`}
+                                          >
+                                            {Object.entries(grouped).map(([emo, data]) => (
+                                              <button
+                                                key={emo}
+                                                onClick={() => handleToggleReaction(m.id, emo)}
+                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-black border shadow-2xs cursor-pointer transition-all hover:scale-105 ${
+                                                  data.hasMine
+                                                    ? "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
+                                                    : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50"
+                                                }`}
+                                                title={data.hasMine ? "You reacted (click to remove)" : "Click to react"}
+                                              >
+                                                <span>{emo}</span>
+                                                {data.count > 1 && <span className="text-[9px]">{data.count}</span>}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 )}
