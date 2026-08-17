@@ -47,13 +47,21 @@ export default function AdminDashboardClient() {
         if (!active) return;
         setStats(statsRes.data.data);
         
+        const rawVerifications = Array.isArray(verificationsRes.data?.data)
+          ? verificationsRes.data.data
+          : (verificationsRes.data?.data?.data || []);
+
         // Filter pending verifications
         setVerifications(
-          verificationsRes.data.data.filter((v: any) => v.status === "Pending")
+          rawVerifications.filter((v: any) => v.status === "Pending")
         );
         
+        const rawTuitions = Array.isArray(tuitionsRes.data?.data)
+          ? tuitionsRes.data.data
+          : (tuitionsRes.data?.data?.data || []);
+
         // Map tuition posts
-        const mappedTuitions = tuitionsRes.data.data.map((p: any) => ({
+        const mappedTuitions = rawTuitions.map((p: any) => ({
           id: p.id,
           studentName: p.student?.name || "N/A",
           classLevel: p.classLevel,

@@ -28,7 +28,9 @@ export default function AdminTuitionsClient() {
       setLoading(true);
       setError(null);
       const response = await api.get("/tuitions");
-      const mappedPosts = response.data.data.map((p: any) => ({
+      const rawData = response.data?.data;
+      const postsList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      const mappedPosts = postsList.map((p: any) => ({
         id: p.id,
         studentName: p.student?.name || "N/A",
         classLevel: p.classLevel,
@@ -58,7 +60,9 @@ export default function AdminTuitionsClient() {
       try {
         const response = await api.get("/tuitions");
         if (active) {
-          const mappedPosts = response.data.data.map((p: any) => ({
+          const rawData = response.data?.data;
+          const postsList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+          const mappedPosts = postsList.map((p: any) => ({
             id: p.id,
             studentName: p.student?.name || "N/A",
             classLevel: p.classLevel,

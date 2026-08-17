@@ -25,7 +25,8 @@ export default function AdminPaymentsClient() {
       setLoading(true);
       setError(null);
       const response = await api.get("/payments");
-      setTransactions(response.data.data);
+      const raw = Array.isArray(response.data?.data) ? response.data.data : (response.data?.data?.data || []);
+      setTransactions(raw);
     } catch (err: any) {
       console.error("Error fetching transactions:", err);
       setError(
@@ -43,7 +44,8 @@ export default function AdminPaymentsClient() {
       try {
         const response = await api.get("/payments");
         if (active) {
-          setTransactions(response.data.data);
+          const raw = Array.isArray(response.data?.data) ? response.data.data : (response.data?.data?.data || []);
+          setTransactions(raw);
         }
       } catch (err: any) {
         if (active) {

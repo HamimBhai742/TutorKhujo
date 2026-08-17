@@ -29,7 +29,8 @@ export default function AdminVerificationsClient() {
       try {
         const response = await api.get("/user/verifications");
         if (active) {
-          setVerifications(response.data.data);
+          const raw = Array.isArray(response.data?.data) ? response.data.data : (response.data?.data?.data || []);
+          setVerifications(raw);
         }
       } catch (err: any) {
         if (active) {

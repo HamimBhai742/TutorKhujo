@@ -43,9 +43,11 @@ export default function AdminUsersClient() {
       setLoading(true);
       setError(null);
       const response = await api.get("/user");
+      const rawData = response.data?.data;
+      const userList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
       
       // Map API user object to AdminUser layout compatibility
-      const mappedUsers: AdminUser[] = response.data.data.map((u: any) => ({
+      const mappedUsers: AdminUser[] = userList.map((u: any) => ({
         id: u.id,
         name: u.name,
         email: u.email,

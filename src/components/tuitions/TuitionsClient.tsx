@@ -85,7 +85,7 @@ export default function TuitionsClient() {
       try {
         setLoadingPosts(true);
         const res = await api.get("/tuitions?status=Active");
-        const raw = res.data?.data || [];
+        const raw = Array.isArray(res.data?.data) ? res.data.data : (res.data?.data?.data || []);
         const formatted: TuitionPost[] = raw.map((p: any) => ({
           id: p.id,
           classLevel: p.classLevel,
