@@ -289,6 +289,7 @@ export default function StudentDashboardClient() {
   const [frequency, setFrequency] = useState<string>("3 Days / Week");
   const [location, setLocation] = useState<string>("");
   const [genderPreference, setGenderPreference] = useState<string>("Any");
+  const [tutorQualification, setTutorQualification] = useState<string>("");
   const [extraNotes, setExtraNotes] = useState<string>("");
 
   // Confirmation Modal state when publishing
@@ -339,6 +340,9 @@ export default function StudentDashboardClient() {
         mode: p.mode,
         frequency: p.frequency,
         location: p.location,
+        genderPreference: p.genderPreference,
+        tutorQualification: p.tutorQualification,
+        extraNotes: p.extraNotes,
         status: p.status,
         date: p.createdAt
           ? new Date(p.createdAt).toLocaleDateString("en-US", {
@@ -388,6 +392,9 @@ export default function StudentDashboardClient() {
             mode: p.mode,
             frequency: p.frequency,
             location: p.location,
+            genderPreference: p.genderPreference,
+            tutorQualification: p.tutorQualification,
+            extraNotes: p.extraNotes,
             status: p.status,
             date: p.createdAt
               ? new Date(p.createdAt).toLocaleDateString("en-US", {
@@ -726,6 +733,7 @@ export default function StudentDashboardClient() {
     setFrequency("3 Days / Week");
     setLocation("");
     setGenderPreference("Any");
+    setTutorQualification("");
     setExtraNotes("");
     setShowPostModal(true);
   };
@@ -740,8 +748,9 @@ export default function StudentDashboardClient() {
     setMode(post.mode);
     setFrequency(post.frequency);
     setLocation(post.location);
-    setGenderPreference("Any");
-    setExtraNotes("");
+    setGenderPreference(post.genderPreference || "Any");
+    setTutorQualification(post.tutorQualification || "");
+    setExtraNotes(post.extraNotes || "");
     setShowPostModal(true);
   };
 
@@ -776,6 +785,7 @@ export default function StudentDashboardClient() {
         frequency,
         location: location.trim(),
         genderPreference,
+        tutorQualification: tutorQualification.trim() || undefined,
         extraNotes: extraNotes.trim() || undefined,
       };
 
@@ -823,6 +833,7 @@ export default function StudentDashboardClient() {
         frequency,
         location: location.trim(),
         genderPreference,
+        tutorQualification: tutorQualification.trim() || undefined,
         extraNotes: extraNotes.trim() || undefined,
       };
 
@@ -2382,6 +2393,23 @@ export default function StudentDashboardClient() {
                     <option value="Female">Female Tutor Preferred</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-zinc-600 dark:text-zinc-400 uppercase tracking-wide flex items-center justify-between">
+                  <span>Tutor Qualification / Preferred Background</span>
+                  <span className="text-[10px] text-zinc-400 font-normal lowercase">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BUET / DU / Medical / Public University / Min 2+ Years Exp"
+                  value={tutorQualification}
+                  onChange={(e) => setTutorQualification(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-850 dark:text-white transition-colors"
+                />
+                <p className="text-[10px] text-zinc-400 font-medium leading-tight">
+                  💡 If left empty, any qualified tutor can apply. If specified, only tutors with matching university/qualifications can apply.
+                </p>
               </div>
 
               <div className="space-y-1.5">

@@ -94,6 +94,9 @@ export default function TuitionsClient() {
           mode: p.mode,
           frequency: p.frequency,
           location: p.location,
+          genderPreference: p.genderPreference,
+          tutorQualification: p.tutorQualification,
+          extraNotes: p.extraNotes,
           status: p.status,
           date: p.createdAt
             ? new Date(p.createdAt).toLocaleDateString("en-US", {
@@ -684,6 +687,14 @@ export default function TuitionsClient() {
                             </span>
                           ))}
                         </div>
+
+                        {/* Preferred Qualification Badge if specified by student */}
+                        {job.tutorQualification && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 px-2.5 py-1 rounded-lg">
+                            <GraduationCap className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <span>Req: {job.tutorQualification}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Footer Salary & apply */}

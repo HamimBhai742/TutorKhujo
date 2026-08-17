@@ -245,6 +245,9 @@ export interface TuitionPost {
   mode: "Home" | "Online" | "Both";
   frequency: string;
   location: string;
+  genderPreference?: string;
+  tutorQualification?: string;
+  extraNotes?: string;
   status: "Active" | "Paused" | "Closed";
   date: string;
 }
