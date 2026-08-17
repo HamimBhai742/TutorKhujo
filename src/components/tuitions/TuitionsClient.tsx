@@ -25,7 +25,8 @@ import {
   Send,
   Building,
   UserCheck,
-  Loader2
+  Loader2,
+  User
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { TakaIcon } from "@/components/shared/TakaIcon";
@@ -647,12 +648,30 @@ export default function TuitionsClient() {
                       className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-4xl p-6 hover:shadow-lg dark:hover:shadow-black/30 transition-all duration-300 flex flex-col justify-between hover:scale-[1.01] relative group"
                     >
                       <div className="space-y-4">
-                        {/* Class level, preferred qualification badge, and date */}
+                        {/* Class level, gender badge, preferred qualification badge, and date */}
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-[10px] font-black uppercase text-[#0F5B47] dark:text-[#188c6e] tracking-wider block bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full">
                               {job.classLevel}
                             </span>
+                            {/* Gender Preference Badge */}
+                            {job.genderPreference && job.genderPreference !== "Any" ? (
+                              <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                  job.genderPreference === "Male"
+                                    ? "text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-800/50"
+                                    : "text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/50"
+                                }`}
+                              >
+                                <User className="w-3 h-3 shrink-0" />
+                                <span>{job.genderPreference} Tutor</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 px-2 py-0.5 rounded-full">
+                                <User className="w-3 h-3 shrink-0 text-zinc-400" />
+                                <span>Any Gender</span>
+                              </span>
+                            )}
                             {job.tutorQualification && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 px-2.5 py-0.5 rounded-full">
                                 <GraduationCap className="w-3 h-3 text-[#0F5B47] dark:text-[#188c6e] shrink-0" />
@@ -665,7 +684,7 @@ export default function TuitionsClient() {
                           </span>
                         </div>
 
-                        {/* Location, frequency and preferred qualification details */}
+                        {/* Location, frequency, gender and preferred qualification details */}
                         <div className="space-y-2">
                           <h3 className="text-base font-black text-zinc-900 dark:text-white leading-snug">
                             Need Tutor for {job.subjects.join(", ")}
@@ -678,6 +697,17 @@ export default function TuitionsClient() {
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-zinc-400 shrink-0" />
                               <span>{job.frequency} &bull; {job.mode}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <User className="w-4 h-4 text-zinc-400 shrink-0" />
+                              <span>
+                                <span className="text-zinc-400 dark:text-zinc-500 font-normal">Gender: </span>
+                                <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                                  {job.genderPreference && job.genderPreference !== "Any"
+                                    ? `${job.genderPreference} Tutor Preferred`
+                                    : "Any Gender (Male / Female)"}
+                                </span>
+                              </span>
                             </div>
                             {job.tutorQualification && (
                               <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
