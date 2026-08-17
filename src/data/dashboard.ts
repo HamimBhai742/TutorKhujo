@@ -167,11 +167,14 @@ export interface ChatMessage {
   sender: "tutor" | "student";
   content: string;
   time: string;
+  isRead?: boolean;
 }
 
 export interface ChatContact {
   id: string;
+  recipientId?: string;
   studentName: string;
+  role?: string;
   avatarBg: string;
   lastMessage: string;
   time: string;

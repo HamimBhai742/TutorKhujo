@@ -27,18 +27,73 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 
+import api, { SOCKET_URL } from "@/lib/api";
+
 function SidebarNavigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const [unreadMessages, setUnreadMessages] = React.useState<number>(0);
   
   const currentTab = searchParams.get("tab") || "overview";
+
+  React.useEffect(() => {
+    if (!user || user.role === "admin") return;
+
+    let active = true;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await api.get("/messages/conversations");
+        const raw = Array.isArray(res.data?.data) ? res.data.data : (res.data?.data?.data || []);
+        if (active) {
+          const totalUnread = raw.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
+          setUnreadMessages(totalUnread);
+        }
+      } catch (_) {}
+    };
+
+    fetchUnread();
+
+    import("socket.io-client").then(({ io }) => {
+      if (!active) return;
+      const token = localStorage.getItem("token");
+      const socket = io(SOCKET_URL, { auth: { token } });
+
+      socket.on("incoming_message", () => {
+        if (active) {
+          setUnreadMessages((prev) => prev + 1);
+        }
+      });
+
+      socket.on("messages_read", () => {
+        if (active) {
+          fetchUnread();
+        }
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  // Clear or refresh unread count when switching to messages tab
+  React.useEffect(() => {
+    if (currentTab === "messages") {
+      setUnreadMessages(0);
+    }
+  }, [currentTab]);
 
   const navigation = user?.role === "tutor"
     ? [
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
         { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
-        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: unreadMessages },
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
         { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: TakaIcon },
         { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },
@@ -48,7 +103,7 @@ function SidebarNavigation() {
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
         { name: "My Tuition Posts", href: "/dashboard?tab=posts", active: currentTab === "posts", icon: FileText },
         { name: "Tutor Applications", href: "/dashboard?tab=applications", active: currentTab === "applications", icon: Users },
-        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: unreadMessages },
         { name: "Active Tutors", href: "/dashboard?tab=active-tutors", active: currentTab === "active-tutors", icon: BookOpen },
         { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: TakaIcon },
       ]
@@ -77,7 +132,12 @@ function SidebarNavigation() {
             }`}
           >
             <Icon size={18} />
-            {item.name}
+            <span className="flex-1">{item.name}</span>
+            {Boolean(item.badge && item.badge > 0) && (
+              <span className="bg-[#F26A1B] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                {item.badge}
+              </span>
+            )}
           </Link>
         );
       })}
