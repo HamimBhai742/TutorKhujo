@@ -64,9 +64,9 @@ export default function LoginClient() {
     setError("");
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { accessToken, user } = response.data.data;
+      const { accessToken, refreshToken, user } = response.data.data;
       
-      login(accessToken, user);
+      login(accessToken, user, refreshToken);
       
       // Redirect to dashboard if admin, to role selection if first time, otherwise to home page
       if (user?.role === "admin") {

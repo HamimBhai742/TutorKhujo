@@ -220,9 +220,9 @@ export default function SignupClient() {
     setError("");
     try {
       const response = await api.post("/auth/verify-otp", { email, otpCode });
-      const { accessToken, user } = response.data.data;
+      const { accessToken, refreshToken, user } = response.data.data;
       
-      login(accessToken, user);
+      login(accessToken, user, refreshToken);
       
       // Redirect to onboarding if tutor, otherwise to home page
       if (user?.role === "tutor") {

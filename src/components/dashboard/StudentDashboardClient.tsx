@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   ExternalLink
 } from "lucide-react";
+import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import api from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
@@ -58,15 +59,29 @@ export default function StudentDashboardClient() {
   // Other dynamic/interactive tab states
   const [applications, setApplications] = useState<TutorApplication[]>([]);
   const [selectedApplicant, setSelectedApplicant] = useState<TutorApplication | null>(null);
+  const selectedTutorDetails: Tutor | undefined = selectedApplicant
+    ? MOCK_TUTORS.find(
+        (t) =>
+          t.id === selectedApplicant.tutorId ||
+          t.name.toLowerCase() === selectedApplicant.tutorName.toLowerCase()
+      )
+    : undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [chats, setChats] = useState<ChatContact[]>([]);
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   
-  const [activeChatId, setActiveChatId] = useState<string>("");
+  const [activeChatId, setActiveChatIdState] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatSearch, setChatSearch] = useState<string>("");
   const [myUserId, setMyUserId] = useState<string>("");
-  const socketRef = React.useRef<any>(null);
+  const socketRef = React.useRef<Socket | null>(null);
+  const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
+
+  // Keeps state and ref in sync — use this instead of setActiveChatId directly
+  const setActiveChatId = (id: string) => {
+    activeChatIdRef.current = id;
+    setActiveChatIdState(id);
+  };
 
   // Post Tuition Form & Modal States
   const [showPostModal, setShowPostModal] = useState<boolean>(false);
@@ -97,12 +112,24 @@ export default function StudentDashboardClient() {
     postTitle: "",
   });
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const showToast = (type: "success" | "error", text: string) => {
+    // Clear any existing timer before setting a new one — prevents memory leaks
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToastMessage({ type, text });
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
+      toastTimerRef.current = null;
     }, 4000);
   };
+
+  // Cleanup toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // Fetch student's tuition posts from backend
   const fetchMyPosts = useCallback(async () => {
@@ -290,8 +317,9 @@ export default function StudentDashboardClient() {
     if (!myUserId) return;
 
     import("socket.io-client").then(({ io }) => {
+      const token = localStorage.getItem("token");
       const socket = io("http://localhost:5001", {
-        query: { userId: myUserId },
+        auth: { token }, // JWT verified server-side
       });
       socketRef.current = socket;
 
@@ -299,7 +327,9 @@ export default function StudentDashboardClient() {
         setChats((prev) =>
           prev.map((c) => {
             if (c.id === payload.conversationId) {
-              const updatedMessages = c.id === activeChatId
+              // Use ref so we don't need activeChatId in deps (prevents socket reconnect)
+              const currentActiveChatId = activeChatIdRef.current;
+              const updatedMessages = c.id === currentActiveChatId
                 ? [...(c.messages || []), {
                     id: payload.id,
                     sender: payload.sender,
@@ -312,7 +342,7 @@ export default function StudentDashboardClient() {
                 ...c,
                 lastMessage: payload.content,
                 time: payload.time,
-                unreadCount: c.id === activeChatId ? c.unreadCount : c.unreadCount + 1,
+                unreadCount: c.id === currentActiveChatId ? c.unreadCount : c.unreadCount + 1,
                 messages: updatedMessages,
               };
             }
@@ -327,7 +357,7 @@ export default function StudentDashboardClient() {
         socketRef.current.disconnect();
       }
     };
-  }, [myUserId, activeChatId]);
+  }, [myUserId]); // activeChatId removed from deps — captured via ref instead
 
   // Open Create Form
   const handleOpenCreateModal = () => {
@@ -1725,223 +1755,215 @@ export default function StudentDashboardClient() {
       {/* ========================================================================= */}
       {/* 4. APPLICANT PROFILE DETAILS MODAL WITH HIRE & CHAT */}
       {/* ========================================================================= */}
-      {selectedApplicant && (() => {
-        const tutorDetails: Tutor | undefined = MOCK_TUTORS.find(
-          (t) =>
-            t.id === selectedApplicant.tutorId ||
-            t.name.toLowerCase() === selectedApplicant.tutorName.toLowerCase()
-        );
+      {selectedApplicant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            {/* Top Accent Gradient Line */}
+            <div className="h-1.5 w-full bg-linear-to-r from-teal-500 to-[#0F5B47]" />
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto">
-              {/* Top Accent Gradient Line */}
-              <div className="h-1.5 w-full bg-linear-to-r from-teal-500 to-[#0F5B47]" />
+            {/* Modal Header */}
+            <div className="p-5 md:p-6 border-b border-zinc-150/80 dark:border-zinc-850 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100 dark:border-teal-900/40 text-xs font-black rounded-full uppercase tracking-wider">
+                  Applicant Profile
+                </span>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase ${
+                  selectedApplicant.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50" :
+                  selectedApplicant.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/30 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200/50" :
+                  "bg-zinc-100 dark:bg-zinc-800 text-zinc-600"
+                }`}>
+                  {selectedApplicant.status}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedApplicant(null)}
+                className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              {/* Modal Header */}
-              <div className="p-5 md:p-6 border-b border-zinc-150/80 dark:border-zinc-850 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100 dark:border-teal-900/40 text-xs font-black rounded-full uppercase tracking-wider">
-                    Applicant Profile
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase ${
-                    selectedApplicant.status === "Pending" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50" :
-                    selectedApplicant.status === "Hired" ? "bg-emerald-50 dark:bg-emerald-950/30 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200/50" :
-                    "bg-zinc-100 dark:bg-zinc-800 text-zinc-600"
-                  }`}>
-                    {selectedApplicant.status}
-                  </span>
+            {/* Modal Scrollable Body */}
+            <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1">
+              {/* Tutor Hero Card */}
+              <div className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-150/60 dark:border-zinc-850 p-6 rounded-2xl flex flex-col md:flex-row gap-6 items-start">
+                <div className="relative shrink-0 mx-auto md:mx-0">
+                  <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl ${selectedApplicant.avatarBg} flex items-center justify-center text-white text-3xl font-black shadow-md`}>
+                    {selectedApplicant.tutorName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-950 shadow-xs">
+                    <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedApplicant(null)}
-                  className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                <div className="flex-1 text-center md:text-left space-y-2 w-full">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <h3 className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white">
+                      {selectedApplicant.tutorName}
+                    </h3>
+                    <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50 w-fit mx-auto md:mx-0">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      {selectedApplicant.rating.toFixed(1)} (Verified Tutor)
+                    </span>
+                  </div>
+
+                  <p className="text-xs md:text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+                    {selectedTutorDetails?.department || selectedApplicant.institution} &bull; {selectedTutorDetails?.university || selectedApplicant.institution}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2 text-xs font-bold text-zinc-500">
+                    {selectedApplicant.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                        {selectedApplicant.location}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
+                      {selectedApplicant.subject}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Modal Scrollable Body */}
-              <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1">
-                {/* Tutor Hero Card */}
-                <div className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-150/60 dark:border-zinc-850 p-6 rounded-2xl flex flex-col md:flex-row gap-6 items-start">
-                  <div className="relative shrink-0 mx-auto md:mx-0">
-                    <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl ${selectedApplicant.avatarBg} flex items-center justify-center text-white text-3xl font-black shadow-md`}>
-                      {selectedApplicant.tutorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white dark:border-zinc-950 shadow-xs">
-                      <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                    </div>
-                  </div>
-
-                  <div className="flex-1 text-center md:text-left space-y-2 w-full">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <h3 className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white">
-                        {selectedApplicant.tutorName}
-                      </h3>
-                      <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200/50 w-fit mx-auto md:mx-0">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                        {selectedApplicant.rating.toFixed(1)} (Verified Tutor)
-                      </span>
-                    </div>
-
-                    <p className="text-xs md:text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                      {tutorDetails?.department || selectedApplicant.institution} &bull; {tutorDetails?.university || selectedApplicant.institution}
-                    </p>
-
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2 text-xs font-bold text-zinc-500">
-                      {selectedApplicant.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                          {selectedApplicant.location}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                        {selectedApplicant.subject}
-                      </span>
-                    </div>
-                  </div>
+              {/* Bid Highlights */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                    Monthly Salary Bid
+                  </span>
+                  <span className="text-lg md:text-xl font-black text-[#0F5B47] dark:text-[#188c6e]">
+                    ৳ {selectedApplicant.salaryBid.toLocaleString()}
+                    <span className="text-xs font-semibold text-zinc-450 ml-1">/mo</span>
+                  </span>
                 </div>
 
-                {/* Bid Highlights */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
-                      Monthly Salary Bid
-                    </span>
-                    <span className="text-lg md:text-xl font-black text-[#0F5B47] dark:text-[#188c6e]">
-                      ৳ {selectedApplicant.salaryBid.toLocaleString()}
-                      <span className="text-xs font-semibold text-zinc-450 ml-1">/mo</span>
-                    </span>
-                  </div>
-
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
-                      Tutoring Mode
-                    </span>
-                    <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
-                      {tutorDetails?.mode === "Both" ? "Home & Online" : tutorDetails?.mode || "Home Tutoring"}
-                    </span>
-                  </div>
-
-                  <div className="col-span-2 md:col-span-1 bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
-                      Class Frequency
-                    </span>
-                    <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
-                      {tutorDetails?.classFrequency || "3 Days / Week"}
-                    </span>
-                  </div>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                    Tutoring Mode
+                  </span>
+                  <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
+                    {selectedTutorDetails?.mode === "Both" ? "Home & Online" : selectedTutorDetails?.mode || "Home Tutoring"}
+                  </span>
                 </div>
 
-                {/* About & Proposal */}
+                <div className="col-span-2 md:col-span-1 bg-white dark:bg-zinc-900 border border-zinc-150/60 dark:border-zinc-800 p-4 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-1">
+                    Class Frequency
+                  </span>
+                  <span className="text-sm md:text-base font-black text-zinc-800 dark:text-zinc-200">
+                    {selectedTutorDetails?.classFrequency || "3 Days / Week"}
+                  </span>
+                </div>
+              </div>
+
+              {/* About & Proposal */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
+                  About Tutor & Teaching Proposal
+                </h4>
+                <div className="bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 p-4 rounded-2xl text-xs md:text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed">
+                  {selectedTutorDetails?.about || `I am an experienced tutor specializing in ${selectedApplicant.subject}. I have strong pedagogical experience preparing students with problem solving, mock evaluations, and structured chapter summaries.`}
+                </div>
+              </div>
+
+              {/* Education Background */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
+                  Education & Qualifications
+                </h4>
+                <div className="space-y-2">
+                  {(selectedTutorDetails?.education || [
+                    { degree: selectedApplicant.subject + " Specialist", institution: selectedApplicant.institution }
+                  ]).map((edu, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl">
+                      <div className="p-2 bg-teal-50 dark:bg-teal-950/30 text-[#0F5B47] dark:text-[#188c6e] rounded-lg shrink-0">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h5 className="text-xs md:text-sm font-black text-zinc-900 dark:text-white">{edu.degree}</h5>
+                        <p className="text-[11px] font-semibold text-zinc-450 dark:text-zinc-500">{edu.institution}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Student Reviews */}
+              {selectedTutorDetails?.reviews && selectedTutorDetails.reviews.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
-                    About Tutor & Teaching Proposal
+                    Student Reviews & Feedback
                   </h4>
-                  <div className="bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 p-4 rounded-2xl text-xs md:text-sm text-zinc-650 dark:text-zinc-350 leading-relaxed">
-                    {tutorDetails?.about || `I am an experienced tutor specializing in ${selectedApplicant.subject}. I have strong pedagogical experience preparing students with problem solving, mock evaluations, and structured chapter summaries.`}
-                  </div>
-                </div>
-
-                {/* Education Background */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
-                    Education & Qualifications
-                  </h4>
-                  <div className="space-y-2">
-                    {(tutorDetails?.education || [
-                      { degree: selectedApplicant.subject + " Specialist", institution: selectedApplicant.institution }
-                    ]).map((edu, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl">
-                        <div className="p-2 bg-teal-50 dark:bg-teal-950/30 text-[#0F5B47] dark:text-[#188c6e] rounded-lg shrink-0">
-                          <GraduationCap className="w-4 h-4" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedTutorDetails.reviews.map((rev, i) => (
+                      <div key={i} className="p-3.5 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">{rev.reviewer}</span>
+                          <span className="inline-flex items-center gap-0.5 text-amber-500 text-[10px] font-black">
+                            <Star className="w-3 h-3 fill-amber-500" />
+                            {rev.rating}
+                          </span>
                         </div>
-                        <div>
-                          <h5 className="text-xs md:text-sm font-black text-zinc-900 dark:text-white">{edu.degree}</h5>
-                          <p className="text-[11px] font-semibold text-zinc-450 dark:text-zinc-500">{edu.institution}</p>
-                        </div>
+                        <p className="text-[11px] italic text-zinc-600 dark:text-zinc-400 leading-snug">
+                          &ldquo;{rev.comment}&rdquo;
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* Student Reviews */}
-                {tutorDetails?.reviews && tutorDetails.reviews.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider text-[11px]">
-                      Student Reviews & Feedback
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {tutorDetails.reviews.map((rev, i) => (
-                        <div key={i} className="p-3.5 bg-zinc-50/60 dark:bg-zinc-900/30 border border-zinc-150/50 dark:border-zinc-850 rounded-xl space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-black text-zinc-800 dark:text-zinc-200">{rev.reviewer}</span>
-                            <span className="inline-flex items-center gap-0.5 text-amber-500 text-[10px] font-black">
-                              <Star className="w-3 h-3 fill-amber-500" />
-                              {rev.rating}
-                            </span>
-                          </div>
-                          <p className="text-[11px] italic text-zinc-600 dark:text-zinc-400 leading-snug">
-                            &ldquo;{rev.comment}&rdquo;
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+            {/* Modal Bottom Actions Bar */}
+            <div className="p-5 border-t border-zinc-150/80 dark:border-zinc-850 bg-zinc-50/80 dark:bg-zinc-900/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                <Link
+                  href={`/tutors/${selectedApplicant.tutorId || '1'}`}
+                  target="_blank"
+                  className="text-xs font-bold text-zinc-500 hover:text-[#0F5B47] dark:hover:text-[#188c6e] flex items-center gap-1 transition-colors"
+                >
+                  <span>Open Public Profile</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                {/* Chat Button */}
+                <button
+                  type="button"
+                  onClick={() => handleStartChatWithTutor(selectedApplicant)}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-100 font-extrabold text-xs rounded-xl transition-all cursor-pointer border border-zinc-200/60 dark:border-zinc-700 shadow-2xs"
+                >
+                  <MessageSquare className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
+                  <span>Chat with Tutor</span>
+                </button>
+
+                {/* Hire Button */}
+                {selectedApplicant.status === "Pending" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleHireTutor(selectedApplicant);
+                      setSelectedApplicant((prev) => prev ? { ...prev, status: "Hired" } : null);
+                    }}
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
+                  >
+                    <Check className="w-4 h-4 stroke-[3px]" />
+                    <span>Hire Tutor</span>
+                  </button>
+                ) : (
+                  <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200 dark:border-emerald-900/50 font-black text-xs rounded-xl">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Tutor Hired</span>
                   </div>
                 )}
               </div>
-
-              {/* Modal Bottom Actions Bar */}
-              <div className="p-5 border-t border-zinc-150/80 dark:border-zinc-850 bg-zinc-50/80 dark:bg-zinc-900/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-                  <Link
-                    href={`/tutors/${selectedApplicant.tutorId || '1'}`}
-                    target="_blank"
-                    className="text-xs font-bold text-zinc-500 hover:text-[#0F5B47] dark:hover:text-[#188c6e] flex items-center gap-1 transition-colors"
-                  >
-                    <span>Open Public Profile</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
-                </div>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                  {/* Chat Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleStartChatWithTutor(selectedApplicant)}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-100 font-extrabold text-xs rounded-xl transition-all cursor-pointer border border-zinc-200/60 dark:border-zinc-700 shadow-2xs"
-                  >
-                    <MessageSquare className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
-                    <span>Chat with Tutor</span>
-                  </button>
-
-                  {/* Hire Button */}
-                  {selectedApplicant.status === "Pending" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleHireTutor(selectedApplicant);
-                        setSelectedApplicant((prev) => prev ? { ...prev, status: "Hired" } : null);
-                      }}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md"
-                    >
-                      <Check className="w-4 h-4 stroke-[3px]" />
-                      <span>Hire Tutor</span>
-                    </button>
-                  ) : (
-                    <div className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-emerald-200 dark:border-emerald-900/50 font-black text-xs rounded-xl">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Tutor Hired</span>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
     </div>
   );

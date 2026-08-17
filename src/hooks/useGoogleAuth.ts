@@ -40,9 +40,9 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
     try {
       const idToken = response.credential;
       const res = await api.post("/auth/google-login", { idToken, role });
-      const { accessToken, user } = res.data.data;
+      const { accessToken, refreshToken, user } = res.data.data;
       
-      login(accessToken, user);
+      login(accessToken, user, refreshToken);
       
       // Redirect to dashboard if admin, to role selection if first time, otherwise to home page
       if (user?.role === "admin") {

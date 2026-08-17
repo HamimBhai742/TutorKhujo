@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import api from "@/lib/api";
 
 interface User {
   id: string;
@@ -14,8 +15,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, userData: User) => void;
-  logout: () => void;
+  login: (token: string, userData: User, refreshToken?: string) => void;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
 
@@ -46,18 +47,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }, 0);
   }, []);
 
-  const login = (newToken: string, userData: User) => {
+  const login = (newToken: string, userData: User, refreshToken?: string) => {
     setToken(newToken);
     setUser(userData);
     localStorage.setItem("token", newToken);
     localStorage.setItem("user", JSON.stringify(userData));
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
+    }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      // Revoke refresh token on the server (fire and forget)
+      if (refreshToken) {
+        await api.post("/auth/logout", { refreshToken }).catch(() => {
+          // Ignore errors — still clear local storage
+        });
+      }
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {

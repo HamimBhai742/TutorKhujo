@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import type { Socket } from "socket.io-client";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -41,7 +42,7 @@ export default function TutorDashboardClient() {
   const [activeTuitions, setActiveTuitions] = useState<ActiveTuition[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [chats, setChats] = useState<ChatContact[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string>("");
+  const [activeChatId, setActiveChatIdState] = useState<string>("");
   const [newMessageText, setNewMessageText] = useState<string>("");
   const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
@@ -49,7 +50,14 @@ export default function TutorDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [myUserId, setMyUserId] = useState<string>("");
-  const socketRef = React.useRef<any>(null);
+  const socketRef = React.useRef<Socket | null>(null);
+  const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
+
+  // Keeps state and ref in sync
+  const setActiveChatId = (id: string) => {
+    activeChatIdRef.current = id;
+    setActiveChatIdState(id);
+  };
 
   const activeChat = chats.find((c) => c.id === activeChatId);
 
@@ -62,7 +70,7 @@ export default function TutorDashboardClient() {
     Evening: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true }
   });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -134,7 +142,7 @@ export default function TutorDashboardClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
    useEffect(() => {
     let active = true;
@@ -146,7 +154,7 @@ export default function TutorDashboardClient() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [fetchDashboardData]);
 
   const fetchMessages = async (convId: string) => {
     try {
@@ -180,8 +188,9 @@ export default function TutorDashboardClient() {
     if (!myUserId) return;
 
     import("socket.io-client").then(({ io }) => {
+      const token = localStorage.getItem("token");
       const socket = io("http://localhost:5001", {
-        query: { userId: myUserId },
+        auth: { token }, // JWT verified server-side
       });
       socketRef.current = socket;
 
@@ -189,7 +198,8 @@ export default function TutorDashboardClient() {
         setChats((prev) =>
           prev.map((c) => {
             if (c.id === payload.conversationId) {
-              const updatedMessages = c.id === activeChatId
+              const currentActiveChatId = activeChatIdRef.current;
+              const updatedMessages = c.id === currentActiveChatId
                 ? [...(c.messages || []), {
                     id: payload.id,
                     sender: payload.sender,
@@ -202,7 +212,7 @@ export default function TutorDashboardClient() {
                 ...c,
                 lastMessage: payload.content,
                 time: payload.time,
-                unreadCount: c.id === activeChatId ? c.unreadCount : c.unreadCount + 1,
+                unreadCount: c.id === currentActiveChatId ? c.unreadCount : c.unreadCount + 1,
                 messages: updatedMessages,
               };
             }
@@ -217,7 +227,7 @@ export default function TutorDashboardClient() {
         socketRef.current.disconnect();
       }
     };
-  }, [myUserId, activeChatId]);
+  }, [myUserId]); // activeChatId removed from deps — captured via ref instead
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

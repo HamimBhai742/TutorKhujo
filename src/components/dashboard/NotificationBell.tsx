@@ -54,9 +54,10 @@ export default function NotificationBell() {
     // Setup real-time Socket.io listener
     import("socket.io-client").then(({ io }) => {
       if (!active) return;
-      
+
+      const token = localStorage.getItem("token");
       const socket = io("http://localhost:5001", {
-        query: { userId: user.id },
+        auth: { token }, // JWT verified server-side — no more insecure userId in query
       });
       socketRef.current = socket;
 

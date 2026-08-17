@@ -157,8 +157,8 @@ export default function DashboardLayout({
             </div>
           </div>
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               window.location.href = "/";
             }}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 transition-all"

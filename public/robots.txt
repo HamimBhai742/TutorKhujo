@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /tuition-jobs
+Allow: /tutors
+
+# Disallow private dashboard pages from indexing
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap location
+Sitemap: https://tutorkhujo.com/sitemap.xml
