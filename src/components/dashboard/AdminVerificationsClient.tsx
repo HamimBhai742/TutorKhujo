@@ -287,32 +287,46 @@ export default function AdminVerificationsClient() {
                 </span>
                 {/* Transcript link */}
                 <div className="flex items-center justify-between rounded-xl border border-zinc-150 p-3 text-xs dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-zinc-800 dark:text-zinc-300">Transcript/ID:</span>
-                    <span className="text-zinc-450 truncate max-w-30">{selectedApp.certificateUrl}</span>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="font-bold text-zinc-800 dark:text-zinc-300 shrink-0">Transcript/ID:</span>
+                    <span className="text-zinc-450 truncate max-w-35">{selectedApp.certificateUrl}</span>
                   </div>
-                  <a
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); alert("Downloading file: " + selectedApp.certificateUrl); }}
-                    className="text-[#0F5B47] dark:text-[#188c6e] font-black flex items-center gap-1 hover:underline"
+                  <button
+                    onClick={() => {
+                      if (selectedApp.certificateUrl?.startsWith("http") || selectedApp.certificateUrl?.startsWith("/")) {
+                        window.open(selectedApp.certificateUrl, "_blank");
+                      } else {
+                        alert(`Viewing demo document: ${selectedApp.certificateUrl}`);
+                      }
+                    }}
+                    className="text-[#0F5B47] dark:text-[#188c6e] font-black flex items-center gap-1 hover:underline ml-2 shrink-0"
+                    title="View Document"
                   >
                     <Download size={14} />
-                  </a>
+                    <span>View</span>
+                  </button>
                 </div>
 
                 {/* NID link */}
                 <div className="flex items-center justify-between rounded-xl border border-zinc-150 p-3 text-xs dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-zinc-800 dark:text-zinc-300">NID Card:</span>
-                    <span className="text-zinc-450 truncate max-w-30">{selectedApp.nidCardUrl}</span>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="font-bold text-zinc-800 dark:text-zinc-300 shrink-0">NID Card:</span>
+                    <span className="text-zinc-450 truncate max-w-35">{selectedApp.nidCardUrl}</span>
                   </div>
-                  <a
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); alert("Downloading file: " + selectedApp.nidCardUrl); }}
-                    className="text-[#0F5B47] dark:text-[#188c6e] font-black flex items-center gap-1 hover:underline"
+                  <button
+                    onClick={() => {
+                      if (selectedApp.nidCardUrl?.startsWith("http") || selectedApp.nidCardUrl?.startsWith("/")) {
+                        window.open(selectedApp.nidCardUrl, "_blank");
+                      } else {
+                        alert(`Viewing demo document: ${selectedApp.nidCardUrl}`);
+                      }
+                    }}
+                    className="text-[#0F5B47] dark:text-[#188c6e] font-black flex items-center gap-1 hover:underline ml-2 shrink-0"
+                    title="View Document"
                   >
                     <Download size={14} />
-                  </a>
+                    <span>View</span>
+                  </button>
                 </div>
               </div>
             </div>
