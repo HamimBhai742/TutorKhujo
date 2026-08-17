@@ -126,17 +126,30 @@ export default function TutorOnboardingClient() {
     }
   }, [user]);
 
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
   // Save Progress Function
   const saveProgress = async (silent = false) => {
     if (typeof window !== "undefined") {
       const dataToSave = {
-        fullName, dob, gender, city, bio,
-        qualifications, tuitionModes, subjects, salary, availability,
-        totalYearsExp, experiences, profilePic
+        fullName,
+        dob,
+        gender,
+        city,
+        bio,
+        qualifications,
+        tuitionModes,
+        subjects,
+        salary,
+        availability,
+        totalYearsExp,
+        experiences,
+        profilePic,
       };
       localStorage.setItem("tutor_onboarding_data", JSON.stringify(dataToSave));
-      
+
       try {
+        setIsSaving(true);
         await api.patch("/user/me/onboard", dataToSave);
         if (!silent) {
           alert("Progress saved successfully to database!");
@@ -146,6 +159,8 @@ export default function TutorOnboardingClient() {
         if (!silent) {
           alert(err.response?.data?.message || "Failed to save progress to server.");
         }
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -326,13 +341,13 @@ export default function TutorOnboardingClient() {
   };
 
   // Navigation handlers
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validateCurrentStep()) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    saveProgress(true);
+    await saveProgress(true);
     if (activeStep < 4) {
       setActiveStep(activeStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
