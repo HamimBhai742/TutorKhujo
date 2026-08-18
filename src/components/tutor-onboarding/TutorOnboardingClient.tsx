@@ -51,6 +51,7 @@ export default function TutorOnboardingClient() {
   const [bio, setBio] = useState<string>("");
   const [certificateUrl, setCertificateUrl] = useState<string>("");
   const [nidCardUrl, setNidCardUrl] = useState<string>("");
+  const [studentIdCardUrl, setStudentIdCardUrl] = useState<string>("");
   
   // Step 2: Education
   const [qualifications, setQualifications] = useState<Qualification[]>([
@@ -69,6 +70,21 @@ export default function TutorOnboardingClient() {
   const [subjects, setSubjects] = useState<string[]>(["Mathematics", "Physics", "Calculus"]);
   const [subjectSearch, setSubjectSearch] = useState<string>("");
   const [salary, setSalary] = useState<number>(5000);
+  const [videoIntroUrl, setVideoIntroUrl] = useState<string>("");
+  const [curriculums, setCurriculums] = useState<string[]>(["NCTB (English Version)"]);
+  const [specializations, setSpecializations] = useState<string[]>(["Physics Specialist"]);
+
+  const handleToggleCurriculum = (curr: string) => {
+    setCurriculums((prev) =>
+      prev.includes(curr) ? prev.filter((c) => c !== curr) : [...prev, curr]
+    );
+  };
+
+  const handleToggleSpecialization = (spec: string) => {
+    setSpecializations((prev) =>
+      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+    );
+  };
   
   // Availability Matrix: rows = Morning/Afternoon/Evening, cols = Mon/Tue/Wed/Thu/Fri/Sat/Sun
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -143,30 +159,17 @@ export default function TutorOnboardingClient() {
           }
           if (dbUser.certificateUrl) setCertificateUrl(dbUser.certificateUrl);
           if (dbUser.nidCardUrl) setNidCardUrl(dbUser.nidCardUrl);
+          if (dbUser.studentIdCardUrl) setStudentIdCardUrl(dbUser.studentIdCardUrl);
+          if (dbUser.videoIntroUrl) setVideoIntroUrl(dbUser.videoIntroUrl);
+          if (Array.isArray(dbUser.curriculums) && dbUser.curriculums.length > 0) {
+            setCurriculums(dbUser.curriculums);
+          }
+          if (Array.isArray(dbUser.specializations) && dbUser.specializations.length > 0) {
+            setSpecializations(dbUser.specializations);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch user profile from server:", err);
-        const savedData = localStorage.getItem("tutor_onboarding_data");
-        if (savedData && isMounted) {
-          try {
-            const data = JSON.parse(savedData);
-            if (data.fullName) setFullName(data.fullName);
-            if (data.dob) setDob(data.dob);
-            if (data.gender) setGender(data.gender);
-            if (data.city) setCity(data.city);
-            if (data.bio) setBio(data.bio);
-            if (data.qualifications) setQualifications(data.qualifications);
-            if (data.tuitionModes) setTuitionModes(data.tuitionModes);
-            if (data.subjects) setSubjects(data.subjects);
-            if (data.salary) setSalary(data.salary);
-            if (data.availability) setAvailability(data.availability);
-            if (data.totalYearsExp) setTotalYearsExp(data.totalYearsExp);
-            if (data.experiences) setExperiences(data.experiences);
-            if (data.profilePic) setProfilePic(data.profilePic);
-            if (data.certificateUrl) setCertificateUrl(data.certificateUrl);
-            if (data.nidCardUrl) setNidCardUrl(data.nidCardUrl);
-          } catch (_) {}
-        }
       }
     };
 
@@ -195,6 +198,10 @@ export default function TutorOnboardingClient() {
         profilePic,
         certificateUrl,
         nidCardUrl,
+        studentIdCardUrl,
+        videoIntroUrl,
+        curriculums,
+        specializations
       };
 
       try {
@@ -505,6 +512,8 @@ export default function TutorOnboardingClient() {
                 setCertificateUrl={setCertificateUrl}
                 nidCardUrl={nidCardUrl}
                 setNidCardUrl={setNidCardUrl}
+                studentIdCardUrl={studentIdCardUrl}
+                setStudentIdCardUrl={setStudentIdCardUrl}
                 fileInputRef={fileInputRef}
                 handleImageChange={handleImageChange}
                 triggerFileInput={triggerFileInput}
@@ -538,6 +547,12 @@ export default function TutorOnboardingClient() {
                 days={days}
                 times={times}
                 subjectSuggestions={subjectSuggestions}
+                videoIntroUrl={videoIntroUrl}
+                setVideoIntroUrl={setVideoIntroUrl}
+                curriculums={curriculums}
+                handleToggleCurriculum={handleToggleCurriculum}
+                specializations={specializations}
+                handleToggleSpecialization={handleToggleSpecialization}
               />
             )}
 

@@ -19,6 +19,8 @@ interface PersonalInfoStepProps {
   setCertificateUrl: (url: string) => void;
   nidCardUrl: string;
   setNidCardUrl: (url: string) => void;
+  studentIdCardUrl: string;
+  setStudentIdCardUrl: (url: string) => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   triggerFileInput: () => void;
@@ -41,6 +43,8 @@ export default function PersonalInfoStep({
   setCertificateUrl,
   nidCardUrl,
   setNidCardUrl,
+  studentIdCardUrl,
+  setStudentIdCardUrl,
   fileInputRef,
   handleImageChange,
   triggerFileInput
@@ -149,50 +153,36 @@ export default function PersonalInfoStep({
           />
         </div>
 
-        {/* Gender Selector */}
-        <div className="space-y-2 md:col-span-2">
-          <label className="text-xs font-bold text-zinc-555 dark:text-zinc-400 uppercase tracking-wider pl-1">
+        {/* Gender */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider pl-1">
             Gender
           </label>
-          <div className="flex flex-wrap gap-6 pt-1">
-            {["Male", "Female", "Non-binary"].map((g) => (
-              <label key={g} className="flex items-center space-x-2.5 cursor-pointer text-xs md:text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                <input
-                  type="radio"
-                  name="gender"
-                  value={g}
-                  checked={gender === g}
-                  onChange={() => setGender(g)}
-                  className="w-4 h-4 accent-[#F26A1B] cursor-pointer"
-                />
-                <span>{g}</span>
-              </label>
-            ))}
-          </div>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+          >
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
 
-        {/* Location / City */}
-        <div className="space-y-1 md:col-span-2">
-          <label className="text-xs font-bold text-zinc-555 dark:text-zinc-400 uppercase tracking-wider pl-1">
-            Location / City
+        {/* City / District */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider pl-1">
+            City / Location
           </label>
           <div className="relative">
-            <select
+            <input
+              type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm appearance-none cursor-pointer"
-            >
-              <option value="">Select your city</option>
-              <option value="Dhaka">Dhaka</option>
-              <option value="Chittagong">Chittagong</option>
-              <option value="Sylhet">Sylhet</option>
-              <option value="Rajshahi">Rajshahi</option>
-              <option value="Khulna">Khulna</option>
-              <option value="Barisal">Barisal</option>
-              <option value="Rangpur">Rangpur</option>
-              <option value="Mymensingh">Mymensingh</option>
-            </select>
-            <MapPin className="w-4 h-4 text-zinc-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              placeholder="e.g. Mirpur, Dhaka"
+              className="w-full px-4 py-3 pl-10 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+            />
+            <MapPin className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3.5" />
           </div>
         </div>
 
@@ -216,30 +206,30 @@ export default function PersonalInfoStep({
         {/* Identity & Academic Verification Documents */}
         <div className="space-y-4 md:col-span-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Verification Documents</h3>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Verification Documents & Blue Badge Proof</h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Upload your academic transcript and identity proof to get verified by admins and gain student trust.
+              Upload your NID and University ID to receive the <b>Verified Tutor Badge</b> (Blue Tick) and boost student trust.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Academic Certificate / Transcript */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* NID / Smart Card */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
               <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                Academic Transcript / Certificate
+                NID / Smart Card
               </label>
               <input
                 type="file"
                 accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, setCertificateUrl)}
-                className="text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
+                onChange={(e) => handleFileUpload(e, setNidCardUrl)}
+                className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
               />
-              {certificateUrl && (
+              {nidCardUrl && (
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[10px] text-emerald-600 font-bold">Document attached ✓</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">Attached ✓</span>
                   <button
                     type="button"
-                    onClick={() => setCertificateUrl("")}
+                    onClick={() => setNidCardUrl("")}
                     className="text-[10px] text-red-500 font-bold hover:underline"
                   >
                     Clear
@@ -248,23 +238,48 @@ export default function PersonalInfoStep({
               )}
             </div>
 
-            {/* NID / Student ID Card */}
+            {/* Varsity Student ID */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
               <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                NID / Student ID Card
+                University Student ID
               </label>
               <input
                 type="file"
                 accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, setNidCardUrl)}
-                className="text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
+                onChange={(e) => handleFileUpload(e, setStudentIdCardUrl)}
+                className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
               />
-              {nidCardUrl && (
+              {studentIdCardUrl && (
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[10px] text-emerald-600 font-bold">Document attached ✓</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">Attached ✓</span>
                   <button
                     type="button"
-                    onClick={() => setNidCardUrl("")}
+                    onClick={() => setStudentIdCardUrl("")}
+                    className="text-[10px] text-red-500 font-bold hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Academic Certificate / Transcript */}
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
+                Academic Certificate / Transcript
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => handleFileUpload(e, setCertificateUrl)}
+                className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
+              />
+              {certificateUrl && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-emerald-600 font-bold">Attached ✓</span>
+                  <button
+                    type="button"
+                    onClick={() => setCertificateUrl("")}
                     className="text-[10px] text-red-500 font-bold hover:underline"
                   >
                     Clear

@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, MapPin, User, Trash2 } from "lucide-react";
+import { Clock, MapPin, User, Trash2, Video, Sparkles, BookOpen } from "lucide-react";
 
 interface PreferencesStepProps {
   tuitionModes: string[];
@@ -16,7 +16,32 @@ interface PreferencesStepProps {
   days: string[];
   times: string[];
   subjectSuggestions: string[];
+  videoIntroUrl: string;
+  setVideoIntroUrl: (url: string) => void;
+  curriculums: string[];
+  handleToggleCurriculum: (curr: string) => void;
+  specializations: string[];
+  handleToggleSpecialization: (spec: string) => void;
 }
+
+const AVAILABLE_CURRICULUMS = [
+  "NCTB (Bangla Medium)",
+  "NCTB (English Version)",
+  "English Medium (Edexcel)",
+  "English Medium (Cambridge)",
+  "Admission Test (Engineering/Varsity/Medical)",
+  "Religious / Madrasah"
+];
+
+const AVAILABLE_SPECIALIZATIONS = [
+  "Physics Specialist",
+  "Math Olympiad Coach",
+  "BUET Admission Focus",
+  "Medical Admission Focus",
+  "O/A Level Expert",
+  "English Spoken & Grammar",
+  "Creative Science Projects"
+];
 
 export default function PreferencesStep({
   tuitionModes,
@@ -32,17 +57,103 @@ export default function PreferencesStep({
   handleToggleAvailability,
   days,
   times,
-  subjectSuggestions
+  subjectSuggestions,
+  videoIntroUrl,
+  setVideoIntroUrl,
+  curriculums,
+  handleToggleCurriculum,
+  specializations,
+  handleToggleSpecialization
 }: PreferencesStepProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       <div className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
-          Teaching Preferences
+          Teaching Preferences & Credibility
         </h1>
         <p className="text-sm text-zinc-555 dark:text-zinc-400 max-w-2xl leading-relaxed">
-          Set your availability, salary requirements, and tuition methods to help us match you with the right leads.
+          Set your curriculum specializations, demo video intro, availability, and salary requirements to stand out.
         </p>
+      </div>
+
+      {/* Demo Video Intro */}
+      <div className="space-y-3 p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-teal-50/10 dark:bg-zinc-900/30">
+        <div className="flex items-center space-x-2">
+          <Video className="w-5 h-5 text-[#0F5B47] dark:text-teal-400" />
+          <h3 className="text-xs font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
+            Demo Class / Video Intro Link (Optional)
+          </h3>
+        </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Add a 30-60 sec YouTube or Vimeo video link introducing yourself or showcasing a short teaching demo to boost conversions.
+        </p>
+        <input
+          type="url"
+          value={videoIntroUrl}
+          onChange={(e) => setVideoIntroUrl(e.target.value)}
+          placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+          className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+        />
+      </div>
+
+      {/* Board & Curriculum Specialization */}
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2 pl-1">
+          <BookOpen className="w-4 h-4 text-[#0F5B47] dark:text-teal-400" />
+          <h3 className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">
+            Board & Curriculum Specialization
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          {AVAILABLE_CURRICULUMS.map((curr) => {
+            const isSelected = curriculums.includes(curr);
+            return (
+              <button
+                type="button"
+                key={curr}
+                onClick={() => handleToggleCurriculum(curr)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-[#0F5B47] text-white shadow-xs"
+                    : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300"
+                }`}
+              >
+                {isSelected ? "✓ " : "+ "}
+                {curr}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Subject Specialization Badges */}
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2 pl-1">
+          <Sparkles className="w-4 h-4 text-[#F26A1B]" />
+          <h3 className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">
+            Specialization Badges
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          {AVAILABLE_SPECIALIZATIONS.map((spec) => {
+            const isSelected = specializations.includes(spec);
+            return (
+              <button
+                type="button"
+                key={spec}
+                onClick={() => handleToggleSpecialization(spec)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-[#F26A1B] text-white shadow-xs"
+                    : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300"
+                }`}
+              >
+                {isSelected ? "★ " : "+ "}
+                {spec}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tuition Modes */}
