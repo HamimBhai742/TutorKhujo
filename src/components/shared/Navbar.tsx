@@ -14,8 +14,9 @@ export default function Navbar() {
   const { user, logout } = useAuth();
 
   const navLinks = [
-    { label: "How it works", href: "#how-it-works" },
+    { label: "How it works", href: "/#how-it-works" },
     { label: "Find a Tutor", href: "/tutors" },
+    { label: "Leaderboard", href: "/leaderboard" },
     { label: "Tuition Jobs", href: "/tuition-jobs" },
     { label: "Become a Tutor", href: "/become-tutor" },
     { label: "About", href: "/about" },

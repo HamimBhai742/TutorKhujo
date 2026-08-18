@@ -452,44 +452,59 @@ export default function TutorsClient() {
       <div className="container mx-auto px-4 max-w-7xl mt-8 md:mt-12">
         
         {/* Feature 4: Tutor of the Month 👑 Leaderboard Banner */}
-        <ScrollReveal variant="slide-up" delay={80}>
-          <div className="mb-8 p-6 rounded-3xl bg-linear-to-r from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xs">
-            <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg text-2xl shrink-0">
-                👑
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                    Leaderboard Highlight
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase">
-                    Tutor of the Month
-                  </span>
+        {allTutors.length > 0 && (
+          <ScrollReveal variant="slide-up" delay={80}>
+            <div className="mb-8 p-6 rounded-3xl bg-linear-to-r from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xs hover:border-amber-300 dark:hover:border-amber-700/60 transition-all duration-300">
+              <Link
+                href="/leaderboard"
+                className="flex items-center space-x-4 group cursor-pointer flex-1"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg text-2xl shrink-0 group-hover:scale-105 transition-transform duration-300">
+                  👑
                 </div>
-                <h3 className="text-lg font-black text-zinc-900 dark:text-white">
-                  Top Rated & Verified Educators
-                </h3>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
-                  Highlighted for 100% response rates, outstanding student reviews, and verified credentials.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="flex -space-x-3 overflow-hidden">
-                {allTutors.slice(0, 3).map((t, idx) => (
-                  <div key={idx} className={`w-10 h-10 rounded-full border-2 border-white dark:border-zinc-950 ${t.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm`}>
-                    {t.initials}
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      Leaderboard Highlight
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase">
+                      Tutor of the Month
+                    </span>
                   </div>
-                ))}
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors flex items-center gap-2">
+                    <span>Top Rated & Verified Educators</span>
+                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  </h3>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                    Highlighted for 100% response rates, outstanding student reviews, and verified credentials.
+                  </p>
+                </div>
+              </Link>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex -space-x-3 overflow-hidden p-1">
+                  {allTutors.slice(0, 4).map((t, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/tutors/${t.id}`}
+                      title={`View ${t.name}'s profile`}
+                      className={`w-10 h-10 rounded-full border-2 border-white dark:border-zinc-950 ${t.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm hover:scale-115 hover:z-20 transition-transform cursor-pointer`}
+                    >
+                      {t.initials}
+                    </Link>
+                  ))}
+                </div>
+                <Link
+                  href="/leaderboard"
+                  className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e] hover:bg-[#0F5B47] hover:text-white dark:hover:bg-[#188c6e] dark:hover:text-white bg-white dark:bg-zinc-900 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>View Leaderboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e] bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                ★ 4.9+ Rated
-              </span>
             </div>
-          </div>
-        </ScrollReveal>
+          </ScrollReveal>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
@@ -595,14 +610,17 @@ export default function TutorsClient() {
 
                       {/* Header Avatar and Rating */}
                       <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center space-x-3.5 min-w-0">
+                        <Link
+                          href={`/tutors/${tutor.id}`}
+                          className="flex items-center space-x-3.5 min-w-0 group/header cursor-pointer"
+                        >
                           <div
-                            className={`w-13 h-13 rounded-2xl ${tutor.avatarBg} flex items-center justify-center text-white text-base font-extrabold shadow-md shrink-0 group-hover:scale-105 transition-transform duration-350`}
+                            className={`w-13 h-13 rounded-2xl ${tutor.avatarBg} flex items-center justify-center text-white text-base font-extrabold shadow-md shrink-0 group-hover/header:scale-105 transition-transform duration-350`}
                           >
                             {tutor.initials}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white group-hover:text-[#0F5B47] dark:group-hover:text-[#188c6e] transition-colors duration-200 truncate">
+                            <h3 className="text-base font-extrabold text-zinc-900 dark:text-white group-hover/header:text-[#0F5B47] dark:group-hover/header:text-[#188c6e] transition-colors duration-200 truncate">
                               {tutor.name}
                             </h3>
                             <div className="text-xs text-zinc-400 dark:text-zinc-500 flex items-center gap-1 mt-0.5 min-w-0">
@@ -610,7 +628,7 @@ export default function TutorsClient() {
                               <span className="truncate max-w-30 font-semibold">{tutor.university}</span>
                             </div>
                           </div>
-                        </div>
+                        </Link>
 
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100/50 dark:border-teal-900/40 shrink-0 whitespace-nowrap">
                           <Award className="w-3 h-3 shrink-0" />
