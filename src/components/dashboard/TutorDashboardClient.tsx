@@ -956,28 +956,88 @@ export default function TutorDashboardClient() {
               </div>
             </div>
 
-            {/* Feature 2: Share Portfolio Card Widget */}
-            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-teal-50 dark:bg-teal-955/30 text-[#0F5B47] dark:text-[#188c6e] rounded-xl">
-                  <Share2 className="w-5 h-5" />
-                </div>
+            {/* Feature 4: Gamification & Profile Completion Meter */}
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-black text-zinc-900 dark:text-white">
-                    Share Your Portfolio Link
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <span>Profile Completeness Meter</span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#0F5B47]/10 text-[#0F5B47] dark:text-[#188c6e] text-[10px] font-extrabold">
+                      85% Complete
+                    </span>
                   </h4>
-                  <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
-                    Get more direct student leads by sharing on social media.
+                  <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-0.5">
+                    Reach 100% to unlock Priority Listing (Rank at top of search).
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="w-full py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] text-white font-extrabold text-xs rounded-2xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-2"
-              >
-                <Share2 className="w-4 h-4 text-white" />
-                <span>Share Portfolio Card</span>
-              </button>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-3 rounded-full overflow-hidden p-0.5 border border-zinc-200/50">
+                <div className="bg-gradient-to-r from-teal-500 to-orange-500 h-full rounded-full w-[85%] transition-all duration-500" />
+              </div>
+
+              {/* Action Checklist */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+                    ✓ Educational Qualifications
+                  </span>
+                  <span className="text-[10px] text-zinc-400">Done</span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                  <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                    + Upload Varsity ID / NID
+                  </span>
+                  <button
+                    onClick={() => router.push("/tutor-onboarding")}
+                    className="text-[10px] font-bold text-[#F26A1B] hover:underline cursor-pointer"
+                  >
+                    +15% Complete
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 4: Referral Program & Reward Points Widget */}
+            <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-200/50 dark:border-amber-900/30 rounded-3xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-amber-500 text-white rounded-2xl shadow-sm">
+                    <Star className="w-5 h-5 fill-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-zinc-900 dark:text-white">
+                      Refer a Friend & Earn
+                    </h4>
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                      500 Reward Points Balance
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                Invite fellow tutors or students using your link. Get bonus credits for every verified registration.
+              </p>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  readOnly
+                  value="https://tutorkhujo.com/register?ref=TK-892XFA"
+                  className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-xs font-bold focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("https://tutorkhujo.com/register?ref=TK-892XFA");
+                    alert("Referral link copied to clipboard!");
+                  }}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
             </div>
 
           </div>

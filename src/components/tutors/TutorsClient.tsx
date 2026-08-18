@@ -416,6 +416,47 @@ export default function TutorsClient() {
 
       {/* Main Content Area */}
       <div className="container mx-auto px-4 max-w-7xl mt-8 md:mt-12">
+        
+        {/* Feature 4: Tutor of the Month 👑 Leaderboard Banner */}
+        <ScrollReveal variant="slide-up" delay={80}>
+          <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xs">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg text-2xl shrink-0">
+                👑
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    Leaderboard Highlight
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase">
+                    Tutor of the Month
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+                  Top Rated & Verified Educators
+                </h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
+                  Highlighted for 100% response rates, outstanding student reviews, and verified credentials.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex -space-x-3 overflow-hidden">
+                {MOCK_TUTORS.slice(0, 3).map((t, idx) => (
+                  <div key={idx} className={`w-10 h-10 rounded-full border-2 border-white dark:border-zinc-950 ${t.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm`}>
+                    {t.initials}
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs font-black text-[#0F5B47] dark:text-[#188c6e] bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                ★ 4.9+ Rated
+              </span>
+            </div>
+          </div>
+        </ScrollReveal>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Desktop Filter Sidebar */}
