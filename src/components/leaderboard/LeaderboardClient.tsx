@@ -225,7 +225,7 @@ export default function LeaderboardClient() {
                       href={`/tutors/${topThree[0].id}`}
                       className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#0F5B47] hover:bg-[#0c4a39] text-white text-xs font-black rounded-xl transition-all shadow-md shadow-teal-900/20 cursor-pointer"
                     >
-                      <span>Book Free Demo Class With Rank #1</span>
+                      <span>View Profile & Send Message</span>
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>

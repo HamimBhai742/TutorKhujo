@@ -21,13 +21,14 @@ import {
   Share2,
   TrendingUp,
   MessageSquarePlus,
+  MessageSquare,
   BadgeCheck,
   Lock,
   Calendar
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
-import BookTrialModal from "@/components/tutors/BookTrialModal";
+import SendMessageModal from "@/components/tutors/SendMessageModal";
 import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
 import api from "@/lib/api";
 
@@ -66,7 +67,7 @@ export default function TutorDetailPage({ params }: PageProps) {
   }, [id]);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isBookTrialOpen, setIsBookTrialOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
@@ -502,13 +503,13 @@ export default function TutorDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                {/* Feature 6: Book 1st Free Demo Class Button */}
+                {/* Message Request Button */}
                 <button
-                  onClick={() => setIsBookTrialOpen(true)}
-                  className="w-full py-3.5 bg-[#F26A1B] hover:bg-[#db5b14] text-white font-extrabold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition-all cursor-pointer flex items-center justify-center space-x-2"
+                  onClick={() => setIsMessageModalOpen(true)}
+                  className="w-full py-3.5 bg-[#0F5B47] hover:bg-[#0c4a39] text-white font-extrabold text-xs rounded-xl shadow-lg shadow-teal-900/20 transition-all cursor-pointer flex items-center justify-center space-x-2"
                 >
-                  <Calendar className="w-4 h-4" />
-                  <span>Book 1st Free Demo Class</span>
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Send Message Request</span>
                 </button>
 
                 <button
@@ -519,10 +520,10 @@ export default function TutorDetailPage({ params }: PageProps) {
                   <span>Share Profile Link</span>
                 </button>
 
-                <div className="bg-blue-50/50 dark:bg-blue-955/10 border border-blue-100/50 dark:border-blue-900/30 p-4 rounded-2xl flex gap-3 items-start">
-                  <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] font-semibold text-blue-800/80 dark:text-blue-400/80 leading-relaxed">
-                    Your request will be sent to the tutor. Once accepted, you will receive their contact details via SMS and Email.
+                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/40 p-4 rounded-2xl flex gap-3 items-start">
+                  <MessageSquare className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-semibold text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
+                    Send a direct message request to discuss subjects, schedules, and tuition fees. The tutor will be notified instantly.
                   </p>
                 </div>
               </div>
@@ -681,15 +682,18 @@ export default function TutorDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Book 1st Free Trial Class Modal */}
-      <BookTrialModal
-        isOpen={isBookTrialOpen}
-        onClose={() => setIsBookTrialOpen(false)}
+      {/* Send Message Request Modal */}
+      <SendMessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
         tutor={{
           id: tutor.id,
           name: tutor.name,
+          avatarBg: tutor.avatarBg,
+          initials: tutor.initials,
           department: tutor.department,
           university: tutor.university,
+          subjects: tutor.subjects,
         }}
       />
     </div>
