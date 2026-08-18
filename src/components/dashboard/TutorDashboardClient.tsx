@@ -279,67 +279,88 @@ export default function TutorDashboardClient() {
       setLoading(true);
       setError(null);
 
-      const [applicationsRes, transactionsRes, userRes, convRes] = await Promise.all([
+      const [applicationsRes, transactionsRes, userRes, convRes] = await Promise.allSettled([
         api.get("/tuitions/tutor/my-applied"),
         api.get("/payments/my-transactions"),
         api.get("/user/me"),
         api.get("/messages/conversations"),
       ]);
 
-      const applications = applicationsRes.data.data;
+      // 1. Map Requests & Active Tuitions
+      if (applicationsRes.status === "fulfilled") {
+        const applications = applicationsRes.value.data?.data || [];
 
-      // 1. Map Requests (Pending or Shortlisted applications)
-      const mappedRequests = applications
-        .filter((app: any) => app.status === "Pending" || app.status === "Shortlisted")
-        .map((app: any) => ({
-          id: app.id,
-          studentName: app.tuitionPost?.student?.name || "N/A",
-          subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
-          classLevel: app.tuitionPost?.classLevel || "N/A",
-          location: app.tuitionPost?.location || "N/A",
-          salary: app.tuitionPost?.budget || 0,
-          mode: app.tuitionPost?.mode || "Home",
-          frequency: app.tuitionPost?.frequency || "3 Days / Week",
-          status: app.status,
-          date: app.createdAt ? new Date(app.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
-        }));
-      setRequests(mappedRequests);
+        const mappedRequests = applications
+          .filter((app: any) => app.status === "Pending" || app.status === "Shortlisted")
+          .map((app: any) => ({
+            id: app.id,
+            studentName: app.tuitionPost?.student?.name || "N/A",
+            subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
+            classLevel: app.tuitionPost?.classLevel || "N/A",
+            location: app.tuitionPost?.location || "N/A",
+            salary: app.tuitionPost?.budget || 0,
+            mode: app.tuitionPost?.mode || "Home",
+            frequency: app.tuitionPost?.frequency || "3 Days / Week",
+            status: app.status,
+            date: app.createdAt ? new Date(app.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
+          }));
+        setRequests(mappedRequests);
 
-      // 2. Map Active Tuitions (Hired applications)
-      const mappedActive = applications
-        .filter((app: any) => app.status === "Hired")
-        .map((app: any) => ({
-          id: app.id,
-          studentName: app.tuitionPost?.student?.name || "N/A",
-          subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
-          classLevel: app.tuitionPost?.classLevel || "N/A",
-          location: app.tuitionPost?.location || "N/A",
-          salary: app.tuitionPost?.budget || 0,
-          mode: app.tuitionPost?.mode || "Home",
-          frequency: app.tuitionPost?.frequency || "3 Days / Week",
-          status: "Active",
-          progress: "Trigonometry & Optics completed. Preparing for yearly tests.",
-          startDate: app.updatedAt ? new Date(app.updatedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
-          nextSession: "Today at 5:00 PM",
-        }));
-      setActiveTuitions(mappedActive);
-
-      // 3. Map Payouts
-      setPayouts(transactionsRes.data.data);
-
-      // 4. Load Availability
-      const dbAvailability = userRes.data.data.availability;
-      if (dbAvailability) {
-        setAvailability(dbAvailability);
+        const mappedActive = applications
+          .filter((app: any) => app.status === "Hired")
+          .map((app: any) => ({
+            id: app.id,
+            studentName: app.tuitionPost?.student?.name || "N/A",
+            subject: app.tuitionPost?.subjects?.join(", ") || "N/A",
+            classLevel: app.tuitionPost?.classLevel || "N/A",
+            location: app.tuitionPost?.location || "N/A",
+            salary: app.tuitionPost?.budget || 0,
+            mode: app.tuitionPost?.mode || "Home",
+            frequency: app.tuitionPost?.frequency || "3 Days / Week",
+            status: "Active",
+            progress: "Trigonometry & Optics completed. Preparing for yearly tests.",
+            startDate: app.updatedAt ? new Date(app.updatedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "N/A",
+            nextSession: "Today at 5:00 PM",
+          }));
+        setActiveTuitions(mappedActive);
       }
 
-      // 5. Load conversations
-      const conversations = convRes.data.data;
-      setChats(conversations);
-      if (conversations.length > 0) {
-        setActiveChatId(conversations[0].id);
+      // 2. Map Payouts
+      if (transactionsRes.status === "fulfilled") {
+        setPayouts(transactionsRes.value.data?.data || []);
       }
-      setMyUserId(userRes.data.data.id);
+
+      // 3. Load User profile & Availability
+      if (userRes.status === "fulfilled") {
+        const userData = userRes.value.data?.data;
+        if (userData) {
+          if (userData.availability) {
+            setAvailability(userData.availability);
+          }
+          if (userData.id) {
+            setMyUserId(userData.id);
+          }
+        }
+      }
+
+      // 4. Load conversations
+      if (convRes.status === "fulfilled") {
+        const conversations = convRes.value.data?.data || [];
+        setChats(conversations);
+        if (conversations.length > 0) {
+          setActiveChatId(conversations[0].id);
+        }
+      }
+
+      // If everything failed, only then show error
+      if (
+        applicationsRes.status === "rejected" &&
+        transactionsRes.status === "rejected" &&
+        userRes.status === "rejected" &&
+        convRes.status === "rejected"
+      ) {
+        setError("Failed to retrieve dashboard data.");
+      }
     } catch (err: any) {
       console.error("Error loading tutor dashboard data:", err);
       setError("Failed to retrieve dashboard data.");

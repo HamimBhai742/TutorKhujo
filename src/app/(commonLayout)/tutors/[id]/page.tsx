@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -28,7 +28,8 @@ import {
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import BookTrialModal from "@/components/tutors/BookTrialModal";
-import { MOCK_TUTORS } from "@/data/tutors";
+import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
+import api from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -36,9 +37,33 @@ interface PageProps {
 
 export default function TutorDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  
-  // Find the tutor by ID
-  const tutor = MOCK_TUTORS.find((t) => t.id === id);
+
+  const [tutor, setTutor] = useState<Tutor | null>(() => {
+    return MOCK_TUTORS.find((t) => t.id === id) || null;
+  });
+  const [loading, setLoading] = useState<boolean>(!tutor);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get(`/user/tutors/${id}`)
+      .then((res) => {
+        if (active && res.data?.data) {
+          const mapped = mapDbTutorToFrontend(res.data.data);
+          setTutor(mapped);
+        }
+      })
+      .catch(() => {
+        // Handled by loading/fallback
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isBookTrialOpen, setIsBookTrialOpen] = useState(false);
@@ -47,8 +72,30 @@ export default function TutorDetailPage({ params }: PageProps) {
   const [newComment, setNewComment] = useState("");
   const [reviewSuccessMsg, setReviewSuccessMsg] = useState("");
 
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 bg-zinc-50/40 dark:bg-black">
+        <div className="w-10 h-10 border-3 border-[#0F5B47] border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-zinc-500">Loading tutor profile...</p>
+      </div>
+    );
+  }
+
   if (!tutor) {
-    notFound();
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 bg-zinc-50/40 dark:bg-black p-6 text-center">
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Tutor Profile Not Found</h2>
+        <p className="text-sm text-zinc-500 max-w-md">
+          We couldn&apos;t find the tutor profile you were looking for. It may have been updated or moved.
+        </p>
+        <Link
+          href="/tutors"
+          className="mt-2 px-6 py-2.5 bg-[#0F5B47] text-white font-bold text-sm rounded-xl hover:bg-[#0c4a39] transition-all shadow-md"
+        >
+          Browse All Tutors
+        </Link>
+      </div>
+    );
   }
 
   // Get similar tutors (excluding current tutor)

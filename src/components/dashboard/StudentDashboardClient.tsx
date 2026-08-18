@@ -51,7 +51,7 @@ import {
   ChatMessage,
   MessageReactionItem
 } from "@/data/dashboard";
-import { Tutor, MOCK_TUTORS } from "@/data/tutors";
+import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
 import { BANGLADESH_QUALIFICATIONS } from "@/data/qualifications";
 
 export default function StudentDashboardClient() {
@@ -73,7 +73,14 @@ export default function StudentDashboardClient() {
         (t) =>
           t.id === selectedApplicant.tutorId ||
           t.name.toLowerCase() === selectedApplicant.tutorName.toLowerCase()
-      )
+      ) ||
+      mapDbTutorToFrontend({
+        id: selectedApplicant.tutorId,
+        name: selectedApplicant.tutorName,
+        department: selectedApplicant.subject,
+        institution: selectedApplicant.institution,
+        expectedSalary: selectedApplicant.salaryBid,
+      })
     : undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [chats, setChats] = useState<ChatContact[]>([]);

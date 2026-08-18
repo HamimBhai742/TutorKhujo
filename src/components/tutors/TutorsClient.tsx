@@ -20,7 +20,8 @@ import {
   Check
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
-import { MOCK_TUTORS } from "@/data/tutors";
+import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
+import api from "@/lib/api";
 
 const LOCATIONS = ["Dhaka", "Dhanmondi", "Banani", "Uttara", "Gulshan", "Mirpur", "Banasree", "Mohammadpur", "Bashundhara", "Wari"];
 const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology"];
@@ -29,6 +30,32 @@ const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "SSC", "HSC"];
 export default function TutorsClient() {
   const searchParams = useSearchParams();
   const subjectQuery = searchParams.get("subject");
+
+  // Real Tutors from Database
+  const [realTutors, setRealTutors] = useState<Tutor[]>([]);
+  const [loadingRealTutors, setLoadingRealTutors] = useState<boolean>(true);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/user/tutors")
+      .then((res) => {
+        if (active && res.data?.data) {
+          const mapped = res.data.data.map(mapDbTutorToFrontend);
+          setRealTutors(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load real tutors:", err);
+      })
+      .finally(() => {
+        if (active) setLoadingRealTutors(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Filters State
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(() => {
@@ -113,9 +140,16 @@ export default function TutorsClient() {
     return count;
   }, [selectedSubjects, selectedClasses, selectedLocation, maxSalary, teachingMode]);
 
+  const allTutors = useMemo(() => {
+    if (realTutors.length > 0) {
+      return realTutors;
+    }
+    return loadingRealTutors ? [] : MOCK_TUTORS;
+  }, [realTutors, loadingRealTutors]);
+
   // Filter and Sort tutors
   const filteredTutors = useMemo(() => {
-    let result = [...MOCK_TUTORS];
+    let result = [...allTutors];
 
     // Subject Filter
     if (selectedSubjects.length > 0) {
@@ -162,7 +196,7 @@ export default function TutorsClient() {
     }
 
     return result;
-  }, [selectedSubjects, selectedClasses, selectedLocation, maxSalary, teachingMode, sortBy]);
+  }, [allTutors, selectedSubjects, selectedClasses, selectedLocation, maxSalary, teachingMode, sortBy]);
 
   // Paginated tutors
   const paginatedTutors = useMemo(() => {
@@ -444,7 +478,7 @@ export default function TutorsClient() {
 
             <div className="flex items-center gap-3 shrink-0">
               <div className="flex -space-x-3 overflow-hidden">
-                {MOCK_TUTORS.slice(0, 3).map((t, idx) => (
+                {allTutors.slice(0, 3).map((t, idx) => (
                   <div key={idx} className={`w-10 h-10 rounded-full border-2 border-white dark:border-zinc-950 ${t.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm`}>
                     {t.initials}
                   </div>
@@ -517,7 +551,7 @@ export default function TutorsClient() {
             </div>
 
             {/* Tutors Cards Grid */}
-            {isFiltering ? (
+            {isFiltering || loadingRealTutors ? (
               // Shimmer Loading Skeleton
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (

@@ -376,3 +376,108 @@ export const MOCK_TUTORS: Tutor[] = [
     responseRate: "Sumaiya usually responds within 2 hours."
   }
 ];
+
+export function mapDbTutorToFrontend(user: any): Tutor {
+  const name = user.name || "Tutor";
+  const nameParts = name.trim().split(" ");
+  const initials = nameParts.length > 1
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+
+  const colorIndex = (name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % 7;
+  const colors = [
+    "bg-emerald-600 dark:bg-emerald-700",
+    "bg-teal-600 dark:bg-teal-700",
+    "bg-blue-600 dark:bg-blue-700",
+    "bg-indigo-600 dark:bg-indigo-700",
+    "bg-rose-600 dark:bg-rose-700",
+    "bg-amber-600 dark:bg-amber-700",
+    "bg-purple-600 dark:bg-purple-700",
+  ];
+
+  const rating =
+    user.reviewsReceived && user.reviewsReceived.length > 0
+      ? Number(
+          (
+            user.reviewsReceived.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) /
+            user.reviewsReceived.length
+          ).toFixed(1)
+        )
+      : 5.0;
+
+  const reviews = Array.isArray(user.reviewsReceived)
+    ? user.reviewsReceived.map((r: any) => ({
+        reviewer: r.student?.name || "Verified Student",
+        date: r.createdAt
+          ? new Date(r.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            })
+          : "Recently",
+        rating: r.rating || 5,
+        comment: r.comment || "Great tutor!",
+      }))
+    : [];
+
+  const qualifications = Array.isArray(user.qualifications) ? user.qualifications : [];
+  const education = qualifications.map((q: any) => ({
+    degree: q.degree || q.subject || q.level || "Degree",
+    institution: q.institution || "Institution",
+  }));
+
+  if (education.length === 0 && (user.institution || user.department)) {
+    education.push({
+      degree: user.department ? `B.Sc in ${user.department}` : (user.yearOfStudy || "Bachelor's Degree"),
+      institution: user.institution || "Dhaka University",
+    });
+  }
+
+  let badge = "Top Rated";
+  if (user.isTutorOfTheMonth) badge = "Tutor of Month";
+  else if (user.verificationStatus === "Approved" || user.isVerified) badge = "Verified Expert";
+  else if (user.isPriorityListed) badge = "Popular";
+
+  const mode = user.tuitionModes?.includes("Both")
+    ? "Both"
+    : user.tuitionModes?.includes("Online")
+    ? "Online"
+    : "Home";
+
+  const classLevels =
+    user.curriculums && user.curriculums.length > 0
+      ? user.curriculums
+      : ["Class 6-9", "SSC", "HSC"];
+
+  return {
+    id: user.id,
+    name: user.name,
+    avatarBg: user.profilePic || colors[colorIndex],
+    initials,
+    university: user.institution || "Dhaka University",
+    department: user.department || "Science & Mathematics",
+    rating,
+    reviewsCount: reviews.length,
+    subjects:
+      Array.isArray(user.subjects) && user.subjects.length > 0
+        ? user.subjects
+        : ["Mathematics", "Physics"],
+    classLevels,
+    location: user.city || "Dhaka",
+    city: user.city || "Dhaka",
+    salary: user.expectedSalary || 5000,
+    mode,
+    badge,
+    gender: (user.gender === "Female" ? "Female" : "Male") as "Male" | "Female",
+    about:
+      user.bio ||
+      `${user.name} is an experienced tutor providing high quality lessons in ${
+        user.subjects?.join(", ") || "various subjects"
+      }.`,
+    education,
+    reviews,
+    classFrequency: "3 Days / Week",
+    trialClass: "Free Demo Class Available",
+    responseRate: `${user.name} usually responds within 1 hour.`,
+  };
+}

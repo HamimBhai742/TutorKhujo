@@ -1,13 +1,31 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Star, MapPin, BookOpen, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 import ScrollReveal from "@/components/shared/ScrollReveal";
-import { MOCK_TUTORS } from "@/data/tutors";
+import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
+import api from "@/lib/api";
 
 export default function FeaturedTutors() {
-  const tutors = MOCK_TUTORS.slice(0, 3);
+  const [tutors, setTutors] = useState<Tutor[]>(() => MOCK_TUTORS.slice(0, 3));
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/user/tutors")
+      .then((res) => {
+        if (active && res.data?.data && res.data.data.length > 0) {
+          const mapped = res.data.data.map(mapDbTutorToFrontend);
+          setTutors(mapped.slice(0, 3));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <section className="py-12 md:py-28 bg-zinc-50/50 dark:bg-zinc-950/20 transition-colors duration-300">
