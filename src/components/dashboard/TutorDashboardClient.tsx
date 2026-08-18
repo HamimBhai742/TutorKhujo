@@ -27,7 +27,6 @@ import {
   ShieldCheck,
   Smile,
   MoreHorizontal,
-  Share2,
   Target,
   Calculator,
   FileText,
@@ -78,7 +77,7 @@ export default function TutorDashboardClient() {
     { id: "log-1", date: "2026-08-18", durationHours: 1.5, topicsCovered: "Physics Chapter 4 - Gravitation & Circular Motion", status: "Completed" },
     { id: "log-2", date: "2026-08-16", durationHours: 2.0, topicsCovered: "Higher Math - Integration & Calculus Exercises", status: "Completed" },
   ]);
-  const [tuitionPayments, setTuitionPayments] = useState<any[]>([
+  const [tuitionPayments] = useState<any[]>([
     { id: "pay-101", studentName: "Rahim Chowdhury", subject: "Physics & Higher Math", classLevel: "Class 9 NCTB", month: "August 2026", amount: 8000, status: "Paid", paymentMethod: "bKash", paidAt: "2026-08-05" },
     { id: "pay-102", studentName: "Nusrat Jahan", subject: "Chemistry", classLevel: "HSC 2nd Year", month: "August 2026", amount: 10000, status: "Pending" },
   ]);
@@ -1110,7 +1109,7 @@ export default function TutorDashboardClient() {
 
               {/* Progress Bar */}
               <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-3 rounded-full overflow-hidden p-0.5 border border-zinc-200/50">
-                <div className="bg-gradient-to-r from-teal-500 to-orange-500 h-full rounded-full w-[85%] transition-all duration-500" />
+                <div className="bg-linear-to-r from-teal-500 to-orange-500 h-full rounded-full w-[85%] transition-all duration-500" />
               </div>
 
               {/* Action Checklist */}
@@ -1136,7 +1135,7 @@ export default function TutorDashboardClient() {
             </div>
 
             {/* Feature 4: Referral Program & Reward Points Widget */}
-            <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-200/50 dark:border-amber-900/30 rounded-3xl p-6 shadow-xs space-y-4">
+            <div className="bg-linear-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-200/50 dark:border-amber-900/30 rounded-3xl p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2.5 bg-amber-500 text-white rounded-2xl shadow-sm">

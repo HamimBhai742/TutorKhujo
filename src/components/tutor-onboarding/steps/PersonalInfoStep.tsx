@@ -1,29 +1,31 @@
-import React, { RefObject } from "react";
+"use client";
+
+import React from "react";
 import Image from "next/image";
-import { User, Camera, MapPin } from "lucide-react";
+import { User, Upload, MapPin } from "lucide-react";
 
 interface PersonalInfoStepProps {
   fullName: string;
-  setFullName: (name: string) => void;
+  setFullName: (val: string) => void;
   dob: string;
-  setDob: (dob: string) => void;
+  setDob: (val: string) => void;
   gender: string;
-  setGender: (gender: string) => void;
+  setGender: (val: string) => void;
   city: string;
-  setCity: (city: string) => void;
+  setCity: (val: string) => void;
   bio: string;
-  setBio: (bio: string) => void;
+  setBio: (val: string) => void;
   profilePic: string;
-  setProfilePic: (pic: string) => void;
-  certificateUrl: string;
-  setCertificateUrl: (url: string) => void;
+  setProfilePic: (val: string) => void;
   nidCardUrl: string;
-  setNidCardUrl: (url: string) => void;
+  setNidCardUrl: (val: string) => void;
   studentIdCardUrl: string;
-  setStudentIdCardUrl: (url: string) => void;
-  fileInputRef: RefObject<HTMLInputElement | null>;
-  handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  setStudentIdCardUrl: (val: string) => void;
+  certificateUrl: string;
+  setCertificateUrl: (val: string) => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   triggerFileInput: () => void;
+  handleImageChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export default function PersonalInfoStep({
@@ -39,14 +41,13 @@ export default function PersonalInfoStep({
   setBio,
   profilePic,
   setProfilePic,
-  certificateUrl,
-  setCertificateUrl,
   nidCardUrl,
   setNidCardUrl,
   studentIdCardUrl,
   setStudentIdCardUrl,
+  certificateUrl,
+  setCertificateUrl,
   fileInputRef,
-  handleImageChange,
   triggerFileInput
 }: PersonalInfoStepProps) {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
@@ -88,44 +89,36 @@ export default function PersonalInfoStep({
               <User className="w-12 h-12 text-zinc-400" />
             )}
           </div>
-          <div className="absolute bottom-1 right-1 bg-[#F26A1B] text-white p-2 rounded-full shadow-lg border border-white group-hover:scale-110 transition-transform">
-            <Camera className="w-4 h-4" />
+          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Upload className="w-6 h-6 text-white" />
           </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageChange}
-            accept="image/*"
-            className="hidden"
-          />
         </div>
-        <div className="text-center sm:text-left space-y-2.5">
-          <h3 className="font-bold text-zinc-800 dark:text-white">Profile Picture</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-normal max-w-sm">
-            A professional photo increases your chance of getting bookings by 40%.
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleFileUpload(e, setProfilePic)}
+        />
+
+        <div className="space-y-2 text-center sm:text-left">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Profile Photo</h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs">
+            Clear front-facing photos improve student response rate by 3x.
           </p>
-          <div className="flex items-center justify-center sm:justify-start space-x-4">
-            <button
-              type="button"
-              onClick={triggerFileInput}
-              className="text-xs font-bold text-[#0F5B47] dark:text-[#188c6e] hover:underline cursor-pointer"
-            >
-              Upload new photo
-            </button>
-            {profilePic && (
-              <button
-                type="button"
-                onClick={() => setProfilePic("")}
-                className="text-xs font-bold text-red-500 hover:underline cursor-pointer"
-              >
-                Remove
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={triggerFileInput}
+            className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+          >
+            Upload Photo
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Form Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Full Name */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider pl-1">
@@ -169,7 +162,7 @@ export default function PersonalInfoStep({
           </select>
         </div>
 
-        {/* City / District */}
+        {/* City / Location */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider pl-1">
             City / Location
@@ -179,11 +172,27 @@ export default function PersonalInfoStep({
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. Mirpur, Dhaka"
+              placeholder="e.g. Dhanmondi, Dhaka"
               className="w-full px-4 py-3 pl-10 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
             />
             <MapPin className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3.5" />
           </div>
+        </div>
+
+        {/* Feature 6: Phone Privacy Control Toggle */}
+        <div className="sm:col-span-2 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-zinc-800 flex items-center justify-between gap-4">
+          <div>
+            <h4 className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
+              <span>🔒 Phone Number Privacy Control</span>
+            </h4>
+            <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-0.5">
+              Keep your mobile number masked on your public profile until a student/guardian hires you.
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" defaultChecked className="sr-only peer" />
+            <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0F5B47]" />
+          </label>
         </div>
 
         {/* Short Bio */}
@@ -263,10 +272,10 @@ export default function PersonalInfoStep({
               )}
             </div>
 
-            {/* Academic Certificate / Transcript */}
+            {/* Degree Certificate */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
               <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                Academic Certificate / Transcript
+                Certificate / Transcript
               </label>
               <input
                 type="file"
@@ -289,6 +298,7 @@ export default function PersonalInfoStep({
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

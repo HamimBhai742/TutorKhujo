@@ -21,10 +21,13 @@ import {
   Share2,
   TrendingUp,
   MessageSquarePlus,
-  BadgeCheck
+  BadgeCheck,
+  Lock,
+  Calendar
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
+import BookTrialModal from "@/components/tutors/BookTrialModal";
 import { MOCK_TUTORS } from "@/data/tutors";
 
 interface PageProps {
@@ -38,6 +41,7 @@ export default function TutorDetailPage({ params }: PageProps) {
   const tutor = MOCK_TUTORS.find((t) => t.id === id);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isBookTrialOpen, setIsBookTrialOpen] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
@@ -427,6 +431,20 @@ export default function TutorDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-4 border-t border-zinc-100 dark:border-zinc-900 pt-4 text-xs font-bold">
+                  {/* Phone Masking Display */}
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 space-y-1 text-center">
+                    <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider block">
+                      Direct Mobile Number
+                    </span>
+                    <div className="text-sm font-black text-zinc-900 dark:text-white flex items-center justify-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-[#F26A1B]" />
+                      <span>+880 1712-*** ***</span>
+                    </div>
+                    <span className="text-[9px] text-zinc-500 font-semibold block">
+                      🔒 Phone number visible to confirmed students
+                    </span>
+                  </div>
+
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-450 dark:text-zinc-500">Class Frequency</span>
                     <span className="text-zinc-800 dark:text-zinc-200">{tutor.classFrequency || "3 Days / Week"}</span>
@@ -437,8 +455,13 @@ export default function TutorDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <button className="w-full py-3.5 bg-[#0F5B47] hover:bg-[#0c4b3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer">
-                  Request Contact
+                {/* Feature 6: Book 1st Free Demo Class Button */}
+                <button
+                  onClick={() => setIsBookTrialOpen(true)}
+                  className="w-full py-3.5 bg-[#F26A1B] hover:bg-[#db5b14] text-white font-extrabold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition-all cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Book 1st Free Demo Class</span>
                 </button>
 
                 <button
@@ -610,6 +633,18 @@ export default function TutorDetailPage({ params }: PageProps) {
           </div>
         </div>
       )}
+
+      {/* Book 1st Free Trial Class Modal */}
+      <BookTrialModal
+        isOpen={isBookTrialOpen}
+        onClose={() => setIsBookTrialOpen(false)}
+        tutor={{
+          id: tutor.id,
+          name: tutor.name,
+          department: tutor.department,
+          university: tutor.university,
+        }}
+      />
     </div>
   );
 }

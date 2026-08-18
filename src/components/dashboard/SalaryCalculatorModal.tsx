@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Calculator, MapPin, BookOpen, Clock, Sparkles, TrendingUp } from "lucide-react";
+import { X, Calculator, Sparkles } from "lucide-react";
 
 interface SalaryCalculatorModalProps {
   isOpen: boolean;
@@ -163,7 +163,7 @@ export default function SalaryCalculatorModal({ isOpen, onClose }: SalaryCalcula
         </div>
 
         {/* Results Card */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-transparent border border-teal-200 dark:border-teal-900/30 text-center space-y-2">
+        <div className="p-5 rounded-2xl bg-linear-to-br from-teal-500/10 via-emerald-500/5 to-transparent border border-teal-200 dark:border-teal-900/30 text-center space-y-2">
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center justify-center gap-1">
             <Sparkles className="w-3.5 h-3.5" />
             Recommended Market Standard Fee Range

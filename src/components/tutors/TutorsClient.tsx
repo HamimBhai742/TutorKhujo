@@ -419,9 +419,9 @@ export default function TutorsClient() {
         
         {/* Feature 4: Tutor of the Month 👑 Leaderboard Banner */}
         <ScrollReveal variant="slide-up" delay={80}>
-          <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xs">
+          <div className="mb-8 p-6 rounded-3xl bg-linear-to-r from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-amber-200 dark:border-amber-900/40 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-xs">
             <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg text-2xl shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg text-2xl shrink-0">
                 👑
               </div>
               <div className="space-y-1">
