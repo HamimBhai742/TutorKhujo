@@ -239,6 +239,7 @@ export const MOCK_CHATS: ChatContact[] = [
 
 export interface TuitionPost {
   id: string;
+  studentId?: string;
   classLevel: string;
   subjects: string[];
   budget: number;

@@ -32,7 +32,7 @@ import {
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import { MOCK_TUITION_POSTS, TuitionPost } from "@/data/dashboard";
-
+import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 const LOCATIONS = [
@@ -51,6 +51,8 @@ const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology", "
 const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "Class 10 (SSC)", "HSC"];
 
 export default function TuitionsClient() {
+  const { user } = useAuth();
+
   // Main Data State
   const [posts, setPosts] = useState<TuitionPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState<boolean>(true);
@@ -90,6 +92,7 @@ export default function TuitionsClient() {
         const raw = Array.isArray(res.data?.data) ? res.data.data : (res.data?.data?.data || []);
         const formatted: TuitionPost[] = raw.map((p: any) => ({
           id: p.id,
+          studentId: p.studentId || p.student?.id,
           classLevel: p.classLevel,
           subjects: Array.isArray(p.subjects) ? p.subjects : [p.subjects],
           budget: p.budget,
@@ -241,6 +244,10 @@ export default function TuitionsClient() {
   };
 
   const handleOpenApply = (job: TuitionPost) => {
+    if (user && job.studentId && user.id === job.studentId) {
+      alert("This tuition post was created by your account. You cannot apply to your own post.");
+      return;
+    }
     setSelectedJob(job);
     setBidAmount(job.budget.toString());
     setProposalText("");
@@ -750,6 +757,10 @@ export default function TuitionsClient() {
                           <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e] px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider">
                             <UserCheck className="w-4 h-4 stroke-[3px]" />
                             Applied
+                          </div>
+                        ) : user && job.studentId && user.id === job.studentId ? (
+                          <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider">
+                            <span>Your Post</span>
                           </div>
                         ) : (
                           <button
