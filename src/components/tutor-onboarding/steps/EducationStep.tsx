@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { BANGLADESH_QUALIFICATIONS } from "@/data/qualifications";
 
 interface Qualification {
   id: string;
@@ -81,16 +82,40 @@ export default function EducationStep({
 
               {/* Institution Name */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 tracking-wider pl-1 uppercase">
-                  Institution Name
-                </label>
-                <input
-                  type="text"
-                  value={qual.institution}
-                  onChange={(e) => handleUpdateQualification(qual.id, "institution", e.target.value)}
-                  placeholder="e.g. Stanford University"
-                  className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
-                />
+                <div className="flex justify-between items-center pl-1">
+                  <label className="text-xs font-bold text-zinc-550 dark:text-zinc-400 tracking-wider uppercase">
+                    Institution Name
+                  </label>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={qual.institution}
+                    onChange={(e) => handleUpdateQualification(qual.id, "institution", e.target.value)}
+                    placeholder="e.g. University of Dhaka / BUET / North South University"
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm"
+                  />
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleUpdateQualification(qual.id, "institution", e.target.value);
+                      }
+                    }}
+                    value=""
+                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="">-- Quick select top Bangladesh institution --</option>
+                    {BANGLADESH_QUALIFICATIONS.map((group) => (
+                      <optgroup key={group.category} label={group.category}>
+                        {group.options.map((opt) => (
+                          <option key={opt.value} value={opt.label}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Subject / Dept */}

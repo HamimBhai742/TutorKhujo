@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -5,7 +6,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { HelpCircle, ArrowLeft, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
+import { HelpCircle, ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import SidebarSteps from "./steps/SidebarSteps";
 import PersonalInfoStep from "./steps/PersonalInfoStep";
 import EducationStep from "./steps/EducationStep";
@@ -34,7 +35,7 @@ interface ExperienceEntry {
 }
 
 export default function TutorOnboardingClient() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   
   // Active step (1 to 4)
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -48,6 +49,8 @@ export default function TutorOnboardingClient() {
   const [gender, setGender] = useState<string>("Male");
   const [city, setCity] = useState<string>("");
   const [bio, setBio] = useState<string>("");
+  const [certificateUrl, setCertificateUrl] = useState<string>("");
+  const [nidCardUrl, setNidCardUrl] = useState<string>("");
   
   // Step 2: Education
   const [qualifications, setQualifications] = useState<Qualification[]>([
@@ -92,15 +95,61 @@ export default function TutorOnboardingClient() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load from LocalStorage
+  // Load profile from server DB on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedData = localStorage.getItem("tutor_onboarding_data");
-      if (savedData) {
-        try {
-          const data = JSON.parse(savedData);
-          // Defer the state updates to avoid synchronous setState calls within the effect
-          setTimeout(() => {
+    let isMounted = true;
+    const loadProfile = async () => {
+      try {
+        const res = await api.get("/user/me");
+        const dbUser = res.data?.data;
+        if (isMounted && dbUser) {
+          if (dbUser.name) setFullName(dbUser.name);
+          if (dbUser.dob) setDob(dbUser.dob);
+          if (dbUser.gender) setGender(dbUser.gender);
+          if (dbUser.city) setCity(dbUser.city);
+          if (dbUser.bio) setBio(dbUser.bio);
+          if (dbUser.profilePic) setProfilePic(dbUser.profilePic);
+          if (Array.isArray(dbUser.qualifications) && dbUser.qualifications.length > 0) {
+            setQualifications(dbUser.qualifications);
+          } else if (dbUser.institution || dbUser.department) {
+            setQualifications([
+              {
+                id: "primary",
+                level: dbUser.yearOfStudy || "Bachelor's Degree",
+                institution: dbUser.institution || "",
+                subject: dbUser.department || "",
+                result: "",
+                passingYear: "2024"
+              }
+            ]);
+          }
+          if (Array.isArray(dbUser.tuitionModes) && dbUser.tuitionModes.length > 0) {
+            setTuitionModes(dbUser.tuitionModes);
+          }
+          if (Array.isArray(dbUser.subjects) && dbUser.subjects.length > 0) {
+            setSubjects(dbUser.subjects);
+          }
+          if (dbUser.expectedSalary) {
+            setSalary(Number(dbUser.expectedSalary));
+          }
+          if (dbUser.availability) {
+            setAvailability(dbUser.availability);
+          }
+          if (dbUser.totalYearsExp) {
+            setTotalYearsExp(dbUser.totalYearsExp);
+          }
+          if (Array.isArray(dbUser.experiences) && dbUser.experiences.length > 0) {
+            setExperiences(dbUser.experiences);
+          }
+          if (dbUser.certificateUrl) setCertificateUrl(dbUser.certificateUrl);
+          if (dbUser.nidCardUrl) setNidCardUrl(dbUser.nidCardUrl);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user profile from server:", err);
+        const savedData = localStorage.getItem("tutor_onboarding_data");
+        if (savedData && isMounted) {
+          try {
+            const data = JSON.parse(savedData);
             if (data.fullName) setFullName(data.fullName);
             if (data.dob) setDob(data.dob);
             if (data.gender) setGender(data.gender);
@@ -114,16 +163,15 @@ export default function TutorOnboardingClient() {
             if (data.totalYearsExp) setTotalYearsExp(data.totalYearsExp);
             if (data.experiences) setExperiences(data.experiences);
             if (data.profilePic) setProfilePic(data.profilePic);
-          }, 0);
-        } catch (e) {
-          console.error("Error loading onboarding data from localStorage:", e);
+            if (data.certificateUrl) setCertificateUrl(data.certificateUrl);
+            if (data.nidCardUrl) setNidCardUrl(data.nidCardUrl);
+          } catch (_) {}
         }
-      } else if (user?.name) {
-        setTimeout(() => {
-          setFullName(user.name);
-        }, 0);
       }
-    }
+    };
+
+    loadProfile();
+    return () => { isMounted = false; };
   }, [user]);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -145,12 +193,17 @@ export default function TutorOnboardingClient() {
         totalYearsExp,
         experiences,
         profilePic,
+        certificateUrl,
+        nidCardUrl,
       };
-      localStorage.setItem("tutor_onboarding_data", JSON.stringify(dataToSave));
 
       try {
         setIsSaving(true);
-        await api.patch("/user/me/onboard", dataToSave);
+        const res = await api.patch("/user/me/onboard", dataToSave);
+        if (res.data?.data && updateUser) {
+          updateUser(res.data.data);
+        }
+        localStorage.removeItem("tutor_onboarding_data");
         if (!silent) {
           alert("Progress saved successfully to database!");
         }
@@ -448,6 +501,10 @@ export default function TutorOnboardingClient() {
                 setBio={setBio}
                 profilePic={profilePic}
                 setProfilePic={setProfilePic}
+                certificateUrl={certificateUrl}
+                setCertificateUrl={setCertificateUrl}
+                nidCardUrl={nidCardUrl}
+                setNidCardUrl={setNidCardUrl}
                 fileInputRef={fileInputRef}
                 handleImageChange={handleImageChange}
                 triggerFileInput={triggerFileInput}
@@ -519,11 +576,20 @@ export default function TutorOnboardingClient() {
 
             <button
               onClick={handleNext}
-              disabled={activeStep === 1 && !fullName}
+              disabled={isSaving || (activeStep === 1 && !fullName)}
               className="w-full sm:w-auto px-8 py-3 bg-[#F26A1B] hover:bg-[#db5b14] disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35 flex items-center justify-center space-x-2 transition-all duration-200 text-xs md:text-sm cursor-pointer"
             >
-              <span>{activeStep === 4 ? "Complete Profile" : "Save & Continue"}</span>
-              <ArrowRight className="w-4.5 h-4.5" />
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <span>{activeStep === 4 ? "Complete Profile" : "Save & Continue"}</span>
+                  <ArrowRight className="w-4.5 h-4.5" />
+                </>
+              )}
             </button>
           </div>
         </main>

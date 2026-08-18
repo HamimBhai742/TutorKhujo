@@ -15,6 +15,10 @@ interface PersonalInfoStepProps {
   setBio: (bio: string) => void;
   profilePic: string;
   setProfilePic: (pic: string) => void;
+  certificateUrl: string;
+  setCertificateUrl: (url: string) => void;
+  nidCardUrl: string;
+  setNidCardUrl: (url: string) => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   triggerFileInput: () => void;
@@ -33,10 +37,25 @@ export default function PersonalInfoStep({
   setBio,
   profilePic,
   setProfilePic,
+  certificateUrl,
+  setCertificateUrl,
+  nidCardUrl,
+  setNidCardUrl,
   fileInputRef,
   handleImageChange,
   triggerFileInput
 }: PersonalInfoStepProps) {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setter(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="space-y-2">
@@ -192,6 +211,68 @@ export default function PersonalInfoStep({
             placeholder="Tell students about yourself, your teaching style, and what motivates you..."
             className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#0F5B47] text-xs md:text-sm resize-none"
           />
+        </div>
+
+        {/* Identity & Academic Verification Documents */}
+        <div className="space-y-4 md:col-span-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Verification Documents</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Upload your academic transcript and identity proof to get verified by admins and gain student trust.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Academic Certificate / Transcript */}
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
+                Academic Transcript / Certificate
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => handleFileUpload(e, setCertificateUrl)}
+                className="text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
+              />
+              {certificateUrl && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-emerald-600 font-bold">Document attached ✓</span>
+                  <button
+                    type="button"
+                    onClick={() => setCertificateUrl("")}
+                    className="text-[10px] text-red-500 font-bold hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* NID / Student ID Card */}
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
+                NID / Student ID Card
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => handleFileUpload(e, setNidCardUrl)}
+                className="text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
+              />
+              {nidCardUrl && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-emerald-600 font-bold">Document attached ✓</span>
+                  <button
+                    type="button"
+                    onClick={() => setNidCardUrl("")}
+                    className="text-[10px] text-red-500 font-bold hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
