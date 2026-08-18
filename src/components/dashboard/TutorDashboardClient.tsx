@@ -26,10 +26,12 @@ import {
   Ban,
   ShieldCheck,
   Smile,
-  MoreHorizontal
+  MoreHorizontal,
+  Share2
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
+import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -58,6 +60,7 @@ export default function TutorDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [myUserId, setMyUserId] = useState<string>("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -949,9 +952,46 @@ export default function TutorDashboardClient() {
               </div>
             </div>
 
+            {/* Feature 2: Share Portfolio Card Widget */}
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-teal-50 dark:bg-teal-955/30 text-[#0F5B47] dark:text-[#188c6e] rounded-xl">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white">
+                    Share Your Portfolio Link
+                  </h4>
+                  <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                    Get more direct student leads by sharing on social media.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="w-full py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] dark:bg-[#188c6e] text-white font-extrabold text-xs rounded-2xl shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-2"
+              >
+                <Share2 className="w-4 h-4 text-white" />
+                <span>Share Portfolio Card</span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}
+
+      {/* Share Profile Modal */}
+      <ShareProfileModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        tutor={{
+          id: myUserId || "tutor-1",
+          name: "Alex Richardson",
+          department: "Mathematics & Science",
+          university: "Stanford University",
+          rating: 4.9,
+        }}
+      />
 
       {/* --- PANEL 2: REQUESTS --- */}
       {currentTab === "requests" && (

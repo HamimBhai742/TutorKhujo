@@ -1,3 +1,6 @@
+"use client";
+
+import React, { useState, use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -14,20 +17,32 @@ import {
   ShieldCheck,
   Video,
   Play,
-  Award
+  Award,
+  Share2,
+  TrendingUp,
+  MessageSquarePlus,
+  ThumbsUp,
+  BadgeCheck
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
+import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import { MOCK_TUTORS } from "@/data/tutors";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function TutorDetailPage({ params }: PageProps) {
-  const { id } = await params;
+export default function TutorDetailPage({ params }: PageProps) {
+  const { id } = use(params);
   
   // Find the tutor by ID
   const tutor = MOCK_TUTORS.find((t) => t.id === id);
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState("");
 
   if (!tutor) {
     notFound();
@@ -36,22 +51,44 @@ export default async function TutorDetailPage({ params }: PageProps) {
   // Get similar tutors (excluding current tutor)
   const similarTutors = MOCK_TUTORS.filter((t) => t.id !== tutor.id).slice(0, 4);
 
+  const handleReviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setReviewSuccessMsg("Thank you! Your review has been submitted as a Verified Student.");
+    setTimeout(() => {
+      setShowReviewModal(false);
+      setReviewSuccessMsg("");
+      setNewComment("");
+    }, 2000);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50/40 dark:bg-black transition-colors duration-300 pb-20 pt-6">
       <div className="container mx-auto px-4 max-w-7xl">
         
-        {/* Breadcrumbs */}
-        <nav className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 dark:text-zinc-500 mb-8 overflow-x-auto whitespace-nowrap py-1">
-          <Link href="/" className="hover:text-[#0F5B47] dark:hover:text-[#188c6e] transition-colors">
-            Home
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-          <Link href="/tutors" className="hover:text-[#0F5B47] dark:hover:text-[#188c6e] transition-colors">
-            Find a Tutor
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-zinc-800 dark:text-zinc-200 truncate">{tutor.name}</span>
-        </nav>
+        {/* Breadcrumbs & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <nav className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 dark:text-zinc-500 overflow-x-auto whitespace-nowrap py-1">
+            <Link href="/" className="hover:text-[#0F5B47] dark:hover:text-[#188c6e] transition-colors">
+              Home
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+            <Link href="/tutors" className="hover:text-[#0F5B47] dark:hover:text-[#188c6e] transition-colors">
+              Find a Tutor
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-zinc-800 dark:text-zinc-200 truncate">{tutor.name}</span>
+          </nav>
+
+          {/* Top Share Profile Button */}
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-teal-500/40 text-zinc-700 dark:text-zinc-200 font-extrabold text-xs rounded-2xl shadow-xs transition-all cursor-pointer w-fit"
+          >
+            <Share2 className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
+            <span>Share Profile Card</span>
+          </button>
+        </div>
 
         {/* Hero Card */}
         <ScrollReveal variant="slide-up" delay={50} duration={700}>
@@ -159,6 +196,67 @@ export default async function TutorDetailPage({ params }: PageProps) {
           </div>
         </ScrollReveal>
 
+        {/* Feature 2: Success Stats Summary Cards */}
+        <ScrollReveal variant="slide-up" delay={70}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-3xl p-5 shadow-xs flex items-center space-x-4">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 dark:text-emerald-400 rounded-2xl shrink-0">
+                <BadgeCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  Successful Tuitions
+                </span>
+                <span className="text-lg md:text-xl font-black text-zinc-900 dark:text-white block mt-0.5">
+                  5+ Confirmed
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-3xl p-5 shadow-xs flex items-center space-x-4">
+              <div className="p-3 bg-teal-50 dark:bg-teal-955/30 text-[#0F5B47] dark:text-[#188c6e] rounded-2xl shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  Response Rate
+                </span>
+                <span className="text-lg md:text-xl font-black text-zinc-900 dark:text-white block mt-0.5">
+                  100% Fast Saara
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-3xl p-5 shadow-xs flex items-center space-x-4">
+              <div className="p-3 bg-amber-50 dark:bg-amber-955/30 text-amber-500 rounded-2xl shrink-0">
+                <Star className="w-6 h-6 fill-amber-500" />
+              </div>
+              <div>
+                <span className="text-xs font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  Student Rating
+                </span>
+                <span className="text-lg md:text-xl font-black text-zinc-900 dark:text-white block mt-0.5">
+                  {tutor.rating.toFixed(1)} / 5.0
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-3xl p-5 shadow-xs flex items-center space-x-4">
+              <div className="p-3 bg-orange-50 dark:bg-orange-955/30 text-[#F26A1B] rounded-2xl shrink-0">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  Teaching Exp
+                </span>
+                <span className="text-lg md:text-xl font-black text-zinc-900 dark:text-white block mt-0.5">
+                  3+ Years
+                </span>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
         {/* 2-Column Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
@@ -254,15 +352,27 @@ export default async function TutorDetailPage({ params }: PageProps) {
               </div>
             </ScrollReveal>
 
-            {/* Student Reviews Card */}
+            {/* Feature 2: Verified Student Reviews Card */}
             <ScrollReveal variant="slide-up" delay={200}>
               <div className="bg-white dark:bg-zinc-950 border border-zinc-150/60 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white">
-                    Student Reviews
-                  </h2>
-                  <button className="text-xs font-bold text-[#0F5B47] dark:text-[#188c6e] hover:text-[#0b4334] dark:hover:text-[#1ca682] cursor-pointer">
-                    View all
+                  <div>
+                    <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                      <span>Verified Student Reviews</span>
+                      <span className="text-xs px-2.5 py-0.5 bg-amber-50 dark:bg-amber-955/30 text-amber-600 font-bold rounded-full">
+                        {tutor.rating.toFixed(1)} ★
+                      </span>
+                    </h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      Feedback from students and parents who hired {tutor.name.split(" ")[0]} through TutorKhujo.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowReviewModal(true)}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    <MessageSquarePlus className="w-4 h-4" />
+                    <span>Write Review</span>
                   </button>
                 </div>
 
@@ -271,10 +381,15 @@ export default async function TutorDetailPage({ params }: PageProps) {
                     <div key={idx} className="bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-150/40 dark:border-zinc-900/60 p-5 rounded-2xl flex flex-col gap-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-xs md:text-sm font-black text-zinc-900 dark:text-white leading-none">
-                            {review.reviewer}
-                          </h4>
-                          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-555 mt-1 block">
+                          <div className="flex items-center space-x-1.5">
+                            <h4 className="text-xs md:text-sm font-black text-zinc-900 dark:text-white leading-none">
+                              {review.reviewer}
+                            </h4>
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-955/30 px-1.5 py-0.5 rounded-full border border-emerald-200/40">
+                              <Check className="w-2.5 h-2.5" /> Verified Student
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-555 mt-1.5 block">
                             {review.date}
                           </span>
                         </div>
@@ -289,7 +404,7 @@ export default async function TutorDetailPage({ params }: PageProps) {
                     </div>
                   )) || (
                     <div className="col-span-2 text-center py-6 text-zinc-400 text-sm font-semibold">
-                      No review messages posted yet.
+                      No review messages posted yet. Be the first to leave feedback!
                     </div>
                   )}
                 </div>
@@ -325,6 +440,14 @@ export default async function TutorDetailPage({ params }: PageProps) {
 
                 <button className="w-full py-3.5 bg-[#0F5B47] hover:bg-[#0c4b3a] dark:bg-[#188c6e] dark:hover:bg-[#15795f] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer">
                   Request Contact
+                </button>
+
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-extrabold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center space-x-2"
+                >
+                  <Share2 className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
+                  <span>Share Profile Link</span>
                 </button>
 
                 <div className="bg-blue-50/50 dark:bg-blue-955/10 border border-blue-100/50 dark:border-blue-900/30 p-4 rounded-2xl flex gap-3 items-start">
@@ -414,6 +537,80 @@ export default async function TutorDetailPage({ params }: PageProps) {
         </ScrollReveal>
 
       </div>
+
+      {/* Share Profile Modal */}
+      <ShareProfileModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        tutor={tutor}
+      />
+
+      {/* Write Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+              Write a Review for {tutor.name}
+            </h3>
+            {reviewSuccessMsg ? (
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-955/30 border border-emerald-200 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-2xl text-center">
+                {reviewSuccessMsg}
+              </div>
+            ) : (
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
+                    Rating (1 to 5 Stars)
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setNewRating(star)}
+                        className="p-1 cursor-pointer"
+                      >
+                        <Star
+                          className={`w-6 h-6 ${
+                            star <= newRating ? "fill-amber-500 text-amber-500" : "text-zinc-300 dark:text-zinc-700"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
+                    Your Written Review
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Share your experience regarding punctuality, teaching clarity, and progress..."
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F5B47]"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-zinc-500 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white font-bold text-xs rounded-xl shadow-xs"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
