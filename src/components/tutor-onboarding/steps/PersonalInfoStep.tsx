@@ -1,8 +1,7 @@
-"use client";
-
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
-import { User, Upload, MapPin } from "lucide-react";
+import { User, Upload, MapPin, Loader2 } from "lucide-react";
+import api from "@/lib/api";
 
 interface PersonalInfoStepProps {
   fullName: string;
@@ -50,14 +49,43 @@ export default function PersonalInfoStep({
   fileInputRef,
   triggerFileInput
 }: PersonalInfoStepProps) {
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: string) => void,
+    fieldName?: string
+  ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (fieldName) setUploadingField(fieldName);
+
+      // Instant local preview
+      if (file.type.startsWith("image/")) {
+        const localPreview = URL.createObjectURL(file);
+        setter(localPreview);
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await api.post("/user/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (res.data?.data?.url) {
+          setter(res.data.data.url);
+          return;
+        }
+      } catch (err) {
+        console.error("Direct upload failed, falling back to local base64:", err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setter(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        if (fieldName) setUploadingField(null);
+      }
     }
   };
 
@@ -89,6 +117,11 @@ export default function PersonalInfoStep({
               <User className="w-12 h-12 text-zinc-400" />
             )}
           </div>
+          {uploadingField === "profilePic" && (
+            <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <Upload className="w-6 h-6 text-white" />
           </div>
@@ -99,7 +132,7 @@ export default function PersonalInfoStep({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => handleFileUpload(e, setProfilePic)}
+          onChange={(e) => handleFileUpload(e, setProfilePic, "profilePic")}
         />
 
         <div className="space-y-2 text-center sm:text-left">
@@ -110,9 +143,10 @@ export default function PersonalInfoStep({
           <button
             type="button"
             onClick={triggerFileInput}
+            disabled={uploadingField === "profilePic"}
             className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
           >
-            Upload Photo
+            {uploadingField === "profilePic" ? "Uploading..." : "Upload Photo"}
           </button>
         </div>
       </div>
@@ -224,13 +258,14 @@ export default function PersonalInfoStep({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* NID / Smart Card */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
-              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                NID / Smart Card
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block items-center justify-between">
+                <span>NID / Smart Card</span>
+                {uploadingField === "nid" && <Loader2 className="w-3.5 h-3.5 text-[#0F5B47] animate-spin" />}
               </label>
               <input
                 type="file"
                 accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, setNidCardUrl)}
+                onChange={(e) => handleFileUpload(e, setNidCardUrl, "nid")}
                 className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
               />
               {nidCardUrl && (
@@ -249,13 +284,14 @@ export default function PersonalInfoStep({
 
             {/* Varsity Student ID */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
-              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                University Student ID
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block items-center justify-between">
+                <span>University Student ID</span>
+                {uploadingField === "studentId" && <Loader2 className="w-3.5 h-3.5 text-[#0F5B47] animate-spin" />}
               </label>
               <input
                 type="file"
                 accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, setStudentIdCardUrl)}
+                onChange={(e) => handleFileUpload(e, setStudentIdCardUrl, "studentId")}
                 className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
               />
               {studentIdCardUrl && (
@@ -274,13 +310,14 @@ export default function PersonalInfoStep({
 
             {/* Degree Certificate */}
             <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2">
-              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                Certificate / Transcript
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block items-center justify-between">
+                <span>Certificate / Transcript</span>
+                {uploadingField === "cert" && <Loader2 className="w-3.5 h-3.5 text-[#0F5B47] animate-spin" />}
               </label>
               <input
                 type="file"
                 accept="image/*,.pdf"
-                onChange={(e) => handleFileUpload(e, setCertificateUrl)}
+                onChange={(e) => handleFileUpload(e, setCertificateUrl, "cert")}
                 className="text-xs text-zinc-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-[#0F5B47] file:text-white hover:file:bg-[#0c4a3a] cursor-pointer"
               />
               {certificateUrl && (

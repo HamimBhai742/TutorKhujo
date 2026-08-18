@@ -668,13 +668,17 @@ export default function TutorDashboardClient() {
   };
 
   const handleToggleAvailability = (time: string, day: string) => {
-    setAvailability((prev) => ({
-      ...prev,
-      [time]: {
-        ...prev[time],
-        [day]: !prev[time][day]
-      }
-    }));
+    setAvailability((prev) => {
+      const current = prev || {};
+      const timeObj = current[time] || {};
+      return {
+        ...current,
+        [time]: {
+          ...timeObj,
+          [day]: !timeObj[day]
+        }
+      };
+    });
   };
 
   const handleSaveAvailability = async () => {

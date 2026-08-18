@@ -83,6 +83,7 @@ export default function Hero() {
                   alt="Tutor teaching a student illustration"
                   fill
                   priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-103"
                 />
               </div>

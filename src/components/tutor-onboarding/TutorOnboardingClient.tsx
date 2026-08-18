@@ -88,11 +88,12 @@ export default function TutorOnboardingClient() {
   // Availability Matrix: rows = Morning/Afternoon/Evening, cols = Mon/Tue/Wed/Thu/Fri/Sat/Sun
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const times = ["Morning", "Afternoon", "Evening"];
-  const [availability, setAvailability] = useState<Record<string, Record<string, boolean>>>({
+  const DEFAULT_AVAILABILITY: Record<string, Record<string, boolean>> = {
     Morning: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
     Afternoon: { Mon: true, Tue: true, Wed: true, Thu: false, Fri: false, Sat: false, Sun: false },
     Evening: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true }
-  });
+  };
+  const [availability, setAvailability] = useState<Record<string, Record<string, boolean>>>(DEFAULT_AVAILABILITY);
   
   // Step 4: Experience
   const [totalYearsExp, setTotalYearsExp] = useState<string>("Less than 1 year");
@@ -148,7 +149,20 @@ export default function TutorOnboardingClient() {
             setSalary(Number(dbUser.expectedSalary));
           }
           if (dbUser.availability) {
-            setAvailability(dbUser.availability);
+            try {
+              const rawAvail = typeof dbUser.availability === "string"
+                ? JSON.parse(dbUser.availability)
+                : dbUser.availability;
+              if (rawAvail && typeof rawAvail === "object") {
+                setAvailability({
+                  Morning: { ...DEFAULT_AVAILABILITY.Morning, ...(rawAvail.Morning || {}) },
+                  Afternoon: { ...DEFAULT_AVAILABILITY.Afternoon, ...(rawAvail.Afternoon || {}) },
+                  Evening: { ...DEFAULT_AVAILABILITY.Evening, ...(rawAvail.Evening || {}) }
+                });
+              }
+            } catch (e) {
+              console.warn("Could not parse availability, using defaults", e);
+            }
           }
           if (dbUser.totalYearsExp) {
             setTotalYearsExp(dbUser.totalYearsExp);
@@ -289,13 +303,17 @@ export default function TutorOnboardingClient() {
   };
 
   const handleToggleAvailability = (time: string, day: string) => {
-    setAvailability((prev) => ({
-      ...prev,
-      [time]: {
-        ...prev[time],
-        [day]: !prev[time][day]
-      }
-    }));
+    setAvailability((prev) => {
+      const current = prev || DEFAULT_AVAILABILITY;
+      const timeObj = current[time] || DEFAULT_AVAILABILITY[time] || {};
+      return {
+        ...current,
+        [time]: {
+          ...timeObj,
+          [day]: !timeObj[day]
+        }
+      };
+    });
   };
 
   // Step 4 Handlers
