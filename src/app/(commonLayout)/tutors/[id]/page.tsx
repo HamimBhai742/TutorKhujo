@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -185,7 +184,7 @@ export default async function TutorDetailPage({ params }: PageProps) {
 
                 <div className="relative aspect-video rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 flex items-center justify-center group cursor-pointer shadow-inner">
                   {/* Video Thumbnail Background */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 z-10" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/20 z-10" />
                   <div className="z-20 text-center space-y-3 p-4">
                     <div className="w-16 h-16 rounded-full bg-[#F26A1B] text-white flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <Play className="w-8 h-8 fill-white ml-1" />
