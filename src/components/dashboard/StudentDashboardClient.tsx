@@ -33,7 +33,6 @@ import {
   ExternalLink,
   Search,
   Send,
-  ShieldAlert,
   ShieldCheck,
   Ban,
   ArrowLeft,
@@ -106,7 +105,7 @@ export default function StudentDashboardClient() {
   };
 
   // Keeps state and ref in sync, clears unread badge, and marks conversation read
-  const setActiveChatId = (id: string) => {
+  const setActiveChatId = useCallback((id: string) => {
     activeChatIdRef.current = id;
     setActiveChatIdState(id);
     setChatMobileView("chat");
@@ -116,27 +115,32 @@ export default function StudentDashboardClient() {
     // Join conversation room
     socketRef.current?.emit("join_conversation", id);
 
-    // Immediately clear unread badge in local state
-    setChats((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
-    );
+    // Immediately clear unread badge in local state & notify counterparty via socket
+    setChats((prev) => {
+      const conv = prev.find((c) => c.id === id);
+      if (conv?.recipientId) {
+        socketRef.current?.emit("mark_read", {
+          conversationId: id,
+          recipientId: conv.recipientId,
+        });
+      }
+      return prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c));
+    });
 
     // Mark as read in backend
     api.patch(`/messages/read/${id}`).catch(() => {});
+  }, []);
 
-    // Notify counterparty via socket
-    const conv = chats.find((c) => c.id === id);
-    if (conv?.recipientId) {
-      socketRef.current?.emit("mark_read", {
-        conversationId: id,
-        recipientId: conv.recipientId,
-      });
-    }
-  };
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isMessageEligibleForAction = (createdAt?: string | Date) => {
     if (!createdAt) return true;
-    const age = Date.now() - new Date(createdAt).getTime();
+    const age = now - new Date(createdAt).getTime();
     return age <= 30 * 60 * 1000;
   };
 
@@ -254,7 +258,7 @@ export default function StudentDashboardClient() {
       activeChatIdRef.current = "";
       setShowDeleteConvModal(false);
       showToast("success", "Conversation deleted");
-    } catch (_) {
+    } catch {
       showToast("error", "Failed to delete conversation");
     }
   };
@@ -360,6 +364,52 @@ export default function StudentDashboardClient() {
       showToast("error", err?.response?.data?.message || "Failed to load tuition posts from server.");
     } finally {
       setLoadingPosts(false);
+    }
+  }, []);
+
+  // Fetch student's received applications from backend for real-time updates
+  const fetchApplications = useCallback(async () => {
+    try {
+      const res = await api.get("/tuitions/my-applications");
+      const rawApps = res.data?.data || [];
+      const bgColors = [
+        "bg-emerald-600",
+        "bg-rose-600",
+        "bg-indigo-600",
+        "bg-amber-600",
+        "bg-blue-600",
+        "bg-teal-600",
+      ];
+
+      const formattedApps: TutorApplication[] = rawApps.map(
+        (a: any, idx: number) => ({
+          id: a.id,
+          postId: a.tuitionPostId,
+          tutorId: a.tutorId,
+          tutorName: a.tutor?.name || "Tutor",
+          institution: a.tutor?.institution || "Verified Tutor",
+          subject:
+            (a.tuitionPost?.subjects && a.tuitionPost?.subjects.join(", ")) ||
+            a.tuitionPost?.classLevel ||
+            "Tuition",
+          rating: 5.0,
+          salaryBid: a.salaryBid,
+          avatarBg: bgColors[idx % bgColors.length],
+          location: a.tuitionPost?.location || "Dhaka",
+          appliedDate: a.createdAt
+            ? new Date(a.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
+            : "Recently",
+          status: a.status || "Pending",
+        })
+      );
+      setApplications(formattedApps);
+    } catch (err) {
+      console.error("Failed to fetch applications:", err);
     }
   }, []);
 
@@ -484,7 +534,25 @@ export default function StudentDashboardClient() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [setActiveChatId]);
+
+  // Auto-refresh applications periodically (every 10s) and on window focus for background sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchApplications();
+    }, 10000);
+
+    const handleFocus = () => {
+      fetchApplications();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [fetchApplications]);
 
   const fetchMessages = async (convId: string) => {
     try {
@@ -565,6 +633,19 @@ export default function StudentDashboardClient() {
           next.delete(userId);
           return next;
         });
+      });
+
+      // Real-time tutor application listeners
+      socket.on("new_application", (appData: any) => {
+        fetchApplications();
+        showToast("success", `New tutor application received from ${appData?.tutorName || "a tutor"}! 📝`);
+      });
+
+      socket.on("new_notification", (notif: any) => {
+        if (notif?.type === "NEW_APPLICATION") {
+          fetchApplications();
+          showToast("success", notif?.message || "New tutor application received! 📝");
+        }
       });
 
       // Request active online users immediately and poll every 3 seconds
@@ -721,7 +802,7 @@ export default function StudentDashboardClient() {
         socketRef.current.disconnect();
       }
     };
-  }, []); // activeChatId removed from deps — captured via ref instead
+  }, [fetchApplications]); // activeChatId removed from deps — captured via ref instead
 
   // Open Create Form
   const handleOpenCreateModal = () => {

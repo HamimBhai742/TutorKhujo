@@ -24,7 +24,6 @@ import {
   Edit3,
   Trash2,
   Ban,
-  ShieldAlert,
   ShieldCheck,
   Smile,
   MoreHorizontal
@@ -80,7 +79,7 @@ export default function TutorDashboardClient() {
   };
 
   // Keeps state and ref in sync, clears unread badge, and marks conversation read
-  const setActiveChatId = (id: string) => {
+  const setActiveChatId = useCallback((id: string) => {
     activeChatIdRef.current = id;
     setActiveChatIdState(id);
     setChatMobileView("chat");
@@ -90,27 +89,32 @@ export default function TutorDashboardClient() {
     // Join conversation room
     socketRef.current?.emit("join_conversation", id);
 
-    // Immediately clear unread badge in local state
-    setChats((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
-    );
+    // Immediately clear unread badge in local state & notify counterparty via socket
+    setChats((prev) => {
+      const conv = prev.find((c) => c.id === id);
+      if (conv?.recipientId) {
+        socketRef.current?.emit("mark_read", {
+          conversationId: id,
+          recipientId: conv.recipientId,
+        });
+      }
+      return prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c));
+    });
 
     // Mark as read in backend
     api.patch(`/messages/read/${id}`).catch(() => {});
+  }, []);
 
-    // Notify counterparty via socket
-    const conv = chats.find((c) => c.id === id);
-    if (conv?.recipientId) {
-      socketRef.current?.emit("mark_read", {
-        conversationId: id,
-        recipientId: conv.recipientId,
-      });
-    }
-  };
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isMessageEligibleForAction = (createdAt?: string | Date) => {
     if (!createdAt) return true;
-    const age = Date.now() - new Date(createdAt).getTime();
+    const age = now - new Date(createdAt).getTime();
     return age <= 30 * 60 * 1000;
   };
 
@@ -133,7 +137,7 @@ export default function TutorDashboardClient() {
       );
       setEditingMessageId(null);
       setEditingMessageText("");
-    } catch (_) {
+    } catch {
     } finally {
       setIsEditingSaving(false);
     }
@@ -152,7 +156,7 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch (_) {}
+    } catch {}
   };
 
   const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
@@ -209,7 +213,7 @@ export default function TutorDashboardClient() {
           )
         );
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const handleDeleteConversation = async () => {
@@ -220,7 +224,7 @@ export default function TutorDashboardClient() {
       setActiveChatIdState("");
       activeChatIdRef.current = "";
       setShowDeleteConvModal(false);
-    } catch (_) {}
+    } catch {}
   };
 
   const handleToggleBlock = async () => {
@@ -235,10 +239,8 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch (_) {}
+    } catch {}
   };
-
-  const activeChat = chats.find((c) => c.id === activeChatId);
 
   // Availability matrix state
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -321,7 +323,7 @@ export default function TutorDashboardClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setActiveChatId]);
 
    useEffect(() => {
     let active = true;
