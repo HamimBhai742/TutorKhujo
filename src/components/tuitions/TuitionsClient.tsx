@@ -889,10 +889,42 @@ export default function TuitionsClient() {
               </div>
 
               {/* Application Proposal Text */}
-              <div className="space-y-1">
-                <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">
-                  Write short proposal / pitch message
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-zinc-550 dark:text-zinc-400 uppercase tracking-wide">
+                    Write short proposal / pitch message
+                  </label>
+                  <span className="text-[10px] text-[#F26A1B] font-extrabold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Quick Pitch
+                  </span>
+                </div>
+
+                {/* Quick Pitch Templates */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProposalText(
+                        `Experienced tutor in ${selectedJob.subjects.join(" & ")}. I focus on building strong core concepts, solving test papers, and conducting weekly evaluation tests.`
+                      )
+                    }
+                    className="px-2.5 py-1 bg-teal-50 dark:bg-teal-955/30 border border-teal-200/50 text-[#0F5B47] dark:text-teal-400 rounded-lg text-[10px] font-bold hover:bg-teal-100/50 cursor-pointer"
+                  >
+                    + Conceptual Focus
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProposalText(
+                        `University graduate specializing in ${selectedJob.classLevel} syllabus. Available for immediate demo class to evaluate student level and design custom study routine.`
+                      )
+                    }
+                    className="px-2.5 py-1 bg-orange-50 dark:bg-orange-955/30 border border-orange-200/50 text-[#F26A1B] rounded-lg text-[10px] font-bold hover:bg-orange-100/50 cursor-pointer"
+                  >
+                    + Exam & Demo Class
+                  </button>
+                </div>
+
                 <textarea
                   placeholder="Introduce yourself, mention your relevant experience, university, and why you are a good match for this tuition position..."
                   value={proposalText}

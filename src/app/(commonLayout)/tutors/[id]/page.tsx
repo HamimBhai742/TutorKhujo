@@ -21,7 +21,6 @@ import {
   Share2,
   TrendingUp,
   MessageSquarePlus,
-  ThumbsUp,
   BadgeCheck
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";

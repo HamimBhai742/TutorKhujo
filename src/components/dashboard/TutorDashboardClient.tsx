@@ -27,11 +27,13 @@ import {
   ShieldCheck,
   Smile,
   MoreHorizontal,
-  Share2
+  Share2,
+  Target
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
+import QuickApplyModal from "@/components/tuitions/QuickApplyModal";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -61,6 +63,8 @@ export default function TutorDashboardClient() {
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [selectedJobForQuickApply, setSelectedJobForQuickApply] = useState<any | null>(null);
+  const [isQuickApplyOpen, setIsQuickApplyOpen] = useState<boolean>(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [myUserId, setMyUserId] = useState<string>("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -1061,6 +1065,129 @@ export default function TutorDashboardClient() {
             )}
           </div>
         </div>
+      )}
+
+      {/* --- PANEL 3: SMART MATCHED JOBS --- */}
+      {currentTab === "matched_jobs" && (
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-900">
+            <div>
+              <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-[#F26A1B]" />
+                <span>Smart Matched Jobs (স্মার্ট টিউশন নোটিফিকেশন)</span>
+              </h2>
+              <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                Real-time tuition leads matched with your preferred location, subjects, and salary requirements.
+              </p>
+            </div>
+            <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 font-extrabold text-xs rounded-full border border-emerald-200/50 w-fit">
+              Location & Budget Matched
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {[
+              {
+                id: "tuition-match-1",
+                classLevel: "Class 9 (NCTB English Version)",
+                subjects: ["Physics", "Higher Math"],
+                budget: 8000,
+                location: "Mirpur 10, Dhaka",
+                matchScore: 98,
+                studentName: "Rahim Chowdhury",
+                frequency: "3 Days / Week",
+                mode: "Student's Home",
+              },
+              {
+                id: "tuition-match-2",
+                classLevel: "HSC 2nd Year",
+                subjects: ["Chemistry", "Biology"],
+                budget: 10000,
+                location: "Dhanmondi, Dhaka",
+                matchScore: 92,
+                studentName: "Nusrat Jahan",
+                frequency: "4 Days / Week",
+                mode: "Home & Online",
+              },
+              {
+                id: "tuition-match-3",
+                classLevel: "O-Level (Edexcel)",
+                subjects: ["Physics"],
+                budget: 12000,
+                location: "Uttara Sector 4, Dhaka",
+                matchScore: 88,
+                studentName: "Tanvir Ahmed",
+                frequency: "3 Days / Week",
+                mode: "Online Only",
+              },
+            ].map((job) => (
+              <div
+                key={job.id}
+                className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150/40 dark:border-zinc-900/40 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-teal-500/30 transition-all"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-base font-black text-zinc-900 dark:text-white">
+                      {job.classLevel}
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                      🎯 {job.matchScore}% Match
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-y-2 gap-x-6 text-xs font-semibold text-zinc-550 dark:text-zinc-400">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-zinc-400" />
+                      {job.location}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-zinc-400" />
+                      {job.subjects.join(", ")}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-zinc-400" />
+                      {job.frequency} &bull; {job.mode}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 border-t md:border-t-0 border-zinc-100 dark:border-zinc-900 pt-4 md:pt-0">
+                  <div className="text-left md:text-right">
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-555 block uppercase font-bold tracking-wider">
+                      Budget
+                    </span>
+                    <span className="text-base font-black text-[#0F5B47] dark:text-[#188c6e]">
+                      ৳ {job.budget.toLocaleString()}/mo
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setSelectedJobForQuickApply(job);
+                      setIsQuickApplyOpen(true);
+                    }}
+                    className="px-5 py-2.5 bg-[#F26A1B] hover:bg-[#db5b14] text-white text-xs font-extrabold rounded-xl shadow-md shadow-orange-500/20 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Quick Apply</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Apply Modal */}
+      {selectedJobForQuickApply && (
+        <QuickApplyModal
+          isOpen={isQuickApplyOpen}
+          onClose={() => {
+            setIsQuickApplyOpen(false);
+            setSelectedJobForQuickApply(null);
+          }}
+          job={selectedJobForQuickApply}
+        />
       )}
 
       {/* --- PANEL 2.5: MESSAGES --- */}
