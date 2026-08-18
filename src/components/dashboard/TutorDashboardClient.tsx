@@ -28,12 +28,18 @@ import {
   Smile,
   MoreHorizontal,
   Share2,
-  Target
+  Target,
+  Calculator,
+  FileText,
+  Plus,
+  Printer
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import QuickApplyModal from "@/components/tuitions/QuickApplyModal";
+import InvoiceModal from "@/components/dashboard/InvoiceModal";
+import SalaryCalculatorModal from "@/components/dashboard/SalaryCalculatorModal";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -65,6 +71,17 @@ export default function TutorDashboardClient() {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [selectedJobForQuickApply, setSelectedJobForQuickApply] = useState<any | null>(null);
   const [isQuickApplyOpen, setIsQuickApplyOpen] = useState<boolean>(false);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState<boolean>(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [isSalaryCalcOpen, setIsSalaryCalcOpen] = useState<boolean>(false);
+  const [classLogs, setClassLogs] = useState<any[]>([
+    { id: "log-1", date: "2026-08-18", durationHours: 1.5, topicsCovered: "Physics Chapter 4 - Gravitation & Circular Motion", status: "Completed" },
+    { id: "log-2", date: "2026-08-16", durationHours: 2.0, topicsCovered: "Higher Math - Integration & Calculus Exercises", status: "Completed" },
+  ]);
+  const [tuitionPayments, setTuitionPayments] = useState<any[]>([
+    { id: "pay-101", studentName: "Rahim Chowdhury", subject: "Physics & Higher Math", classLevel: "Class 9 NCTB", month: "August 2026", amount: 8000, status: "Paid", paymentMethod: "bKash", paidAt: "2026-08-05" },
+    { id: "pay-102", studentName: "Nusrat Jahan", subject: "Chemistry", classLevel: "HSC 2nd Year", month: "August 2026", amount: 10000, status: "Pending" },
+  ]);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [myUserId, setMyUserId] = useState<string>("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -741,6 +758,15 @@ export default function TutorDashboardClient() {
             {currentTab === "availability" && "Control your teaching schedule availability."}
           </p>
         </div>
+
+        {/* Feature 5: Market Fee Calculator Trigger Button */}
+        <button
+          onClick={() => setIsSalaryCalcOpen(true)}
+          className="px-4 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-orange-500/50 text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer w-fit shrink-0"
+        >
+          <Calculator className="w-4 h-4 text-[#F26A1B]" />
+          <span>Market Standard Fee Calculator</span>
+        </button>
       </div>
 
       {/* Grid Stats (Renders on Overview, Active, and Earnings Tabs) */}
@@ -877,6 +903,116 @@ export default function TutorDashboardClient() {
                   No classes scheduled for today.
                 </div>
               )}
+            </div>
+
+            {/* Feature 5: Class Log & Attendance Tracker */}
+            <div className="pt-6 border-t border-zinc-100 dark:border-zinc-900 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e]" />
+                    <span>Tuition Attendance & Class Log</span>
+                  </h4>
+                  <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                    Track completed class hours and topics for your active tuitions.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const topic = prompt("Enter topics covered today (e.g. Physics Chapter 4 exercises):");
+                    if (topic) {
+                      setClassLogs((prev) => [
+                        {
+                          id: `log-${Date.now()}`,
+                          date: new Date().toISOString().split("T")[0],
+                          durationHours: 1.5,
+                          topicsCovered: topic,
+                          status: "Completed",
+                        },
+                        ...prev,
+                      ]);
+                      alert("Class session logged successfully!");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white text-[11px] font-extrabold rounded-xl shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Log Today&apos;s Class
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {classLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-3.5 bg-zinc-50/60 dark:bg-zinc-900/40 rounded-2xl border border-zinc-150/40 dark:border-zinc-850 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-zinc-850 dark:text-zinc-200 block">
+                        {log.topicsCovered}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-bold">
+                        {log.date} &bull; {log.durationHours} Hours Session
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 font-black text-[9px] uppercase rounded-full shrink-0">
+                      ✓ {log.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Feature 5: Monthly Tuition Payment Tracker */}
+            <div className="pt-6 border-t border-zinc-100 dark:border-zinc-900 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                    <TakaIcon className="w-4 h-4 text-emerald-500" />
+                    <span>Monthly Payment Tracker & Receipts</span>
+                  </h4>
+                  <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                    Track paid/pending student fees and generate digital invoices.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {tuitionPayments.map((pay) => (
+                  <div
+                    key={pay.id}
+                    className="p-4 bg-zinc-50/60 dark:bg-zinc-900/40 rounded-2xl border border-zinc-150/40 dark:border-zinc-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-zinc-900 dark:text-white">
+                          {pay.studentName}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 font-bold">({pay.month})</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-bold block">
+                        {pay.subject} &bull; {pay.classLevel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-100 dark:border-zinc-850">
+                      <span className="font-black text-[#0F5B47] dark:text-[#188c6e] text-sm">
+                        ৳ {pay.amount.toLocaleString()}
+                      </span>
+                      
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(pay);
+                          setIsInvoiceOpen(true);
+                        }}
+                        className="px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-teal-500 text-zinc-700 dark:text-zinc-300 text-[10px] font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <Printer className="w-3 h-3 text-[#0F5B47]" />
+                        <span>Receipt</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -1249,6 +1385,24 @@ export default function TutorDashboardClient() {
           job={selectedJobForQuickApply}
         />
       )}
+
+      {/* Invoice Digital Receipt Modal */}
+      {selectedInvoice && (
+        <InvoiceModal
+          isOpen={isInvoiceOpen}
+          onClose={() => {
+            setIsInvoiceOpen(false);
+            setSelectedInvoice(null);
+          }}
+          invoice={selectedInvoice}
+        />
+      )}
+
+      {/* Market Standard Salary Calculator Modal */}
+      <SalaryCalculatorModal
+        isOpen={isSalaryCalcOpen}
+        onClose={() => setIsSalaryCalcOpen(false)}
+      />
 
       {/* --- PANEL 2.5: MESSAGES --- */}
       {currentTab === "messages" && (
