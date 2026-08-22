@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, Suspense } from "react";
@@ -41,6 +42,7 @@ function SidebarNavigation() {
     if (!user || user.role === "admin") return;
 
     let active = true;
+    let socketInstance: any = null;
 
     const fetchUnread = async () => {
       try {
@@ -50,7 +52,9 @@ function SidebarNavigation() {
           const totalUnread = raw.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
           setUnreadMessages(totalUnread);
         }
-      } catch (_) {}
+      } catch {
+        // ignore errors
+      }
     };
 
     fetchUnread();
@@ -59,6 +63,7 @@ function SidebarNavigation() {
       if (!active) return;
       const token = localStorage.getItem("token");
       const socket = io(SOCKET_URL, { auth: { token } });
+      socketInstance = socket;
 
       socket.on("incoming_message", () => {
         if (active) {
@@ -71,29 +76,23 @@ function SidebarNavigation() {
           fetchUnread();
         }
       });
-
-      return () => {
-        socket.disconnect();
-      };
     });
 
     return () => {
       active = false;
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
     };
   }, [user]);
 
-  // Clear or refresh unread count when switching to messages tab
-  React.useEffect(() => {
-    if (currentTab === "messages") {
-      setUnreadMessages(0);
-    }
-  }, [currentTab]);
+  const displayUnread = currentTab === "messages" ? 0 : unreadMessages;
 
   const navigation = user?.role === "tutor"
     ? [
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
         { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
-        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: unreadMessages },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: displayUnread },
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
         { name: "Earnings & Payments", href: "/dashboard?tab=earnings", active: currentTab === "earnings", icon: TakaIcon },
         { name: "Availability Slots", href: "/dashboard?tab=availability", active: currentTab === "availability", icon: Calendar },
@@ -103,7 +102,7 @@ function SidebarNavigation() {
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
         { name: "My Tuition Posts", href: "/dashboard?tab=posts", active: currentTab === "posts", icon: FileText },
         { name: "Tutor Applications", href: "/dashboard?tab=applications", active: currentTab === "applications", icon: Users },
-        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: unreadMessages },
+        { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: displayUnread },
         { name: "Active Tutors", href: "/dashboard?tab=active-tutors", active: currentTab === "active-tutors", icon: BookOpen },
         { name: "Payment Invoices", href: "/dashboard?tab=invoices", active: currentTab === "invoices", icon: TakaIcon },
       ]
