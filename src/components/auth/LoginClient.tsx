@@ -321,9 +321,9 @@ export default function LoginClient() {
 
       {/* Footer at bottom */}
       <footer className="py-6 border-t border-zinc-200/50 dark:border-zinc-800/50 text-center flex flex-col md:flex-row items-center justify-center space-y-2 md:space-y-0 md:space-x-8 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-widest uppercase">
-        <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
+        <Link href="/privacy" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
         <span className="hidden md:inline text-zinc-300 dark:text-zinc-800">•</span>
-        <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
+        <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link>
         <span className="hidden md:inline text-zinc-300 dark:text-zinc-800">•</span>
         <Link href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Help</Link>
       </footer>

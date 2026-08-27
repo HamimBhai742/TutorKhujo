@@ -455,8 +455,8 @@ export default function SignupClient() {
             <div className="mt-12 pt-6 border-t border-zinc-100 dark:border-zinc-900 flex flex-col md:flex-row items-center justify-between text-xs text-zinc-400 dark:text-zinc-505 space-y-2 md:space-y-0">
               <p>© 2024 TutorKhujo. Empowering education globally.</p>
               <div className="flex space-x-4">
-                <Link href="#" className="hover:underline">Terms</Link>
-                <Link href="#" className="hover:underline">Privacy</Link>
+                <Link href="/terms" className="hover:underline">Terms</Link>
+                <Link href="/privacy" className="hover:underline">Privacy</Link>
                 <Link href="#" className="hover:underline">Contact</Link>
                 <Link href="#" className="hover:underline">Help Center</Link>
               </div>
@@ -677,6 +677,25 @@ export default function SignupClient() {
                   <span>Create Account</span>
                   <UserPlus className="w-4 h-4" />
                 </button>
+
+                {/* Disclaimer */}
+                <p className="text-center text-xs text-zinc-500 dark:text-zinc-400 mt-4 leading-relaxed">
+                  By clicking continue, you agree to our{" "}
+                  <Link
+                    href="/terms"
+                    className="underline text-[#0F5B47] dark:text-[#188c6e] hover:text-[#db5b14] dark:hover:text-emerald-400 transition-colors font-medium"
+                  >
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy"
+                    className="underline text-[#0F5B47] dark:text-[#188c6e] hover:text-[#db5b14] dark:hover:text-emerald-400 transition-colors font-medium"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
               </form>
 
               {/* Login redirection */}
