@@ -5,6 +5,11 @@ import { Provider } from "react-redux";
 import { ThemeProvider } from "next-themes";
 import { store } from "@/redux/store";
 import { AuthProvider } from "@/context/AuthContext";
+import dynamic from "next/dynamic";
+
+const ChatbotWidget = dynamic(() => import("@/components/shared/ChatbotWidget"), {
+  ssr: false,
+});
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -19,7 +24,10 @@ export default function AppProviders({ children }: AppProvidersProps) {
         enableSystem
         disableTransitionOnChange
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <ChatbotWidget />
+        </AuthProvider>
       </ThemeProvider>
     </Provider>
   );
