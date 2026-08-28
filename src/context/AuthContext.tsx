@@ -66,6 +66,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           // Ignore errors — still clear local storage
         });
       }
+      
+      // Disable GSI auto-select to prevent silent login on next visit
+      if (typeof window !== "undefined" && window.google?.accounts?.id) {
+        window.google.accounts.id.disableAutoSelect();
+      }
     } finally {
       setToken(null);
       setUser(null);
