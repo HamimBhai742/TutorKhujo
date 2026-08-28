@@ -39,6 +39,7 @@ import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import QuickApplyModal from "@/components/tuitions/QuickApplyModal";
 import InvoiceModal from "@/components/dashboard/InvoiceModal";
 import SalaryCalculatorModal from "@/components/dashboard/SalaryCalculatorModal";
+import ProfileClient from "@/components/dashboard/ProfileClient";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -773,6 +774,7 @@ export default function TutorDashboardClient() {
             {currentTab === "active" && "Active Tuitions"}
             {currentTab === "earnings" && "Earnings & Payments"}
             {currentTab === "availability" && "Availability Grid"}
+            {currentTab === "profile" && "Profile Settings"}
           </h2>
           <p className="text-sm font-semibold text-[#5F6E6B] dark:text-zinc-400 mt-1">
             {currentTab === "overview" && "Manage classes, schedules, and monitor search rankings."}
@@ -780,6 +782,7 @@ export default function TutorDashboardClient() {
             {currentTab === "active" && "Track current student courses and session histories."}
             {currentTab === "earnings" && "Review payouts, current balances, and accounting logs."}
             {currentTab === "availability" && "Control your teaching schedule availability."}
+            {currentTab === "profile" && "Manage your personal details, credentials, preferences, and documents."}
           </p>
         </div>
 
@@ -2234,6 +2237,11 @@ export default function TutorDashboardClient() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* --- PANEL 6: PROFILE SETTINGS --- */}
+      {currentTab === "profile" && (
+        <ProfileClient />
       )}
 
       {/* Confirmation Modal for Deleting Conversation */}

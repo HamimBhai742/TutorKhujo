@@ -43,6 +43,7 @@ import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import api, { SOCKET_URL } from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
+import ProfileClient from "@/components/dashboard/ProfileClient";
 import {
   TuitionPost,
   TutorApplication,
@@ -1166,6 +1167,7 @@ export default function StudentDashboardClient() {
             {currentTab === "messages" && "Messages Inbox"}
             {currentTab === "active-tutors" && "Active Tutors"}
             {currentTab === "invoices" && "Invoices & Billing"}
+            {currentTab === "profile" && "Profile Settings"}
           </h2>
           <p className="text-sm font-semibold text-zinc-550 dark:text-zinc-400 mt-1">
             {currentTab === "overview" && "Monitor active lessons, review applicant teachers, and manage fee billing."}
@@ -1174,6 +1176,7 @@ export default function StudentDashboardClient() {
             {currentTab === "messages" && "Initiate real-time communications with shortlisted/active tutors."}
             {currentTab === "active-tutors" && "Track study progress, log sessions, and check attendance."}
             {currentTab === "invoices" && "Review payment logs, invoices, and bank receipt archives."}
+            {currentTab === "profile" && "Manage your personal details, credentials, and settings."}
           </p>
         </div>
 
@@ -2974,6 +2977,11 @@ export default function StudentDashboardClient() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- PANEL 6: PROFILE SETTINGS --- */}
+      {currentTab === "profile" && (
+        <ProfileClient />
       )}
 
       {/* Confirmation Modal for Deleting Conversation */}
