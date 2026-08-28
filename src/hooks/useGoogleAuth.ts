@@ -34,12 +34,13 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
     document.body.appendChild(script);
   }, []);
 
-  const handleCredentialResponse = useCallback(async (response: any) => {
+  const handleCredentialResponse = useCallback(async (response: any, overrideRole?: "student" | "tutor") => {
     setIsLoading(true);
     setError("");
     try {
       const idToken = response.credential;
-      const res = await api.post("/auth/google-login", { idToken, role });
+      const finalRole = overrideRole || role;
+      const res = await api.post("/auth/google-login", { idToken, role: finalRole });
       const { accessToken, refreshToken, user } = res.data.data;
       
       login(accessToken, user, refreshToken);
@@ -78,10 +79,13 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
         localStorage.removeItem("google_auth_role");
         
         // Submit the credential
-        handleCredentialResponse({ credential: idToken });
+        const finalRole = savedRole || role;
+        setTimeout(() => {
+          handleCredentialResponse({ credential: idToken }, finalRole);
+        }, 0);
       }
     }
-  }, [handleCredentialResponse]);
+  }, [handleCredentialResponse, role]);
 
   const signInWithGoogleRedirect = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;

@@ -303,7 +303,7 @@ export default function ProfileClient() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[350px] gap-3">
+      <div className="flex flex-col items-center justify-center min-h-87.5 gap-3">
         <Loader2 className="w-8 h-8 text-[#0F5B47] animate-spin" />
         <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Loading your profile details...</p>
       </div>
