@@ -154,6 +154,7 @@ export default function StudentDashboardClient() {
   const [chatMobileView, setChatMobileView] = useState<"list" | "chat">("list");
   const [chatSearch, setChatSearch] = useState<string>("");
   const [myUserId, setMyUserId] = useState<string>("");
+  const [myUserName, setMyUserName] = useState<string>("Me");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState<string>("");
   const [isEditingSaving, setIsEditingSaving] = useState<boolean>(false);
@@ -517,8 +518,12 @@ export default function StudentDashboardClient() {
         if (ignore) return;
 
         if (userRes.status === "fulfilled") {
-          const uId = userRes.value.data?.data?.id || "";
+          const uData = userRes.value.data?.data;
+          const uId = uData?.id || "";
           setMyUserId(uId);
+          if (uData?.name || uData?.fullName) {
+            setMyUserName(uData.name || uData.fullName);
+          }
         }
 
         if (postsRes.status === "fulfilled") {
@@ -2311,7 +2316,7 @@ export default function StudentDashboardClient() {
                                   {/* Right: User Initials Circle (matching App orange circle) */}
                                   {isMe && (
                                     <ChatAvatar
-                                      name="MD Hamim"
+                                      name={myUserName}
                                       className="w-8 h-8 mt-0.5"
                                       bgClassName="bg-[#F97316] text-white"
                                       textClassName="text-[11px] font-black text-white"
