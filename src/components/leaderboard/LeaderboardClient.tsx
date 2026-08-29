@@ -6,18 +6,10 @@ import {
   Trophy,
   Award,
   Star,
-  ShieldCheck,
-  Zap,
-  BookOpen,
-  MapPin,
-  GraduationCap,
-  Sparkles,
   ArrowRight,
   TrendingUp,
   Flame,
-  CheckCircle2,
-  ChevronRight,
-  UserCheck
+  ChevronRight
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";

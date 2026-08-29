@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, Printer, CheckCircle, ShieldCheck, Download, Calendar } from "lucide-react";
+import { X, Printer, CheckCircle, ShieldCheck } from "lucide-react";
 
 interface InvoiceModalProps {
   isOpen: boolean;

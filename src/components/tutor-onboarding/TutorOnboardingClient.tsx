@@ -188,6 +188,7 @@ export default function TutorOnboardingClient() {
 
     loadProfile();
     return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);

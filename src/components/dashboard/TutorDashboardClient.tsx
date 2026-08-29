@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import type { Socket } from "socket.io-client";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -34,7 +34,8 @@ import {
   Calculator,
   FileText,
   Plus,
-  Printer
+  Printer,
+  AlertTriangle
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
@@ -92,6 +93,7 @@ const ChatAvatar: React.FC<{
       <div
         className={`${className} rounded-full overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 relative`}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src!}
           alt={name || "User"}
@@ -153,11 +155,28 @@ export default function TutorDashboardClient() {
   const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState<boolean>(false);
   const [showDeleteConvModal, setShowDeleteConvModal] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (type: "success" | "error" | "info", text: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage({ type, text });
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 4000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
-  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
@@ -243,7 +262,9 @@ export default function TutorDashboardClient() {
       );
       setEditingMessageId(null);
       setEditingMessageText("");
-    } catch {
+      showToast("success", "Message updated");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update message");
     } finally {
       setIsEditingSaving(false);
     }
@@ -262,7 +283,10 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch {}
+      showToast("success", "Message unsent");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to delete message");
+    }
   };
 
   const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
@@ -319,7 +343,9 @@ export default function TutorDashboardClient() {
           )
         );
       }
-    } catch {}
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update reaction");
+    }
   };
 
   const handleDeleteConversation = async () => {
@@ -330,7 +356,10 @@ export default function TutorDashboardClient() {
       setActiveChatIdState("");
       activeChatIdRef.current = "";
       setShowDeleteConvModal(false);
-    } catch {}
+      showToast("success", "Conversation deleted");
+    } catch {
+      showToast("error", "Failed to delete conversation");
+    }
   };
 
   const handleToggleBlock = async () => {
@@ -345,7 +374,10 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch {}
+      showToast("success", updated.isBlocked ? "Contact blocked" : "Contact unblocked");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update block status");
+    }
   };
 
   // Availability matrix state
@@ -749,7 +781,7 @@ export default function TutorDashboardClient() {
       );
     } catch (err) {
       console.error("Error sending message:", err);
-      alert("Failed to send message.");
+      showToast("error", "Failed to send message.");
     }
   };
 
@@ -770,32 +802,32 @@ export default function TutorDashboardClient() {
   const handleSaveAvailability = async () => {
     try {
       await api.patch("/user/me", { availability });
-      alert("Availability preferences saved successfully!");
+      showToast("success", "Availability preferences saved successfully!");
     } catch (err: any) {
       console.error("Error saving availability:", err);
-      alert(err.response?.data?.message || "Failed to save availability preferences.");
+      showToast("error", err.response?.data?.message || "Failed to save availability preferences.");
     }
   };
 
   const handleAcceptRequest = async (req: TuitionRequest) => {
     try {
       await api.patch(`/tuitions/applications/${req.id}/status`, { status: "Hired" });
-      alert(`Success! You have accepted the tuition request from ${req.studentName}.`);
+      showToast("success", `Success! You have accepted the tuition request from ${req.studentName}.`);
       fetchDashboardData();
     } catch (err: any) {
       console.error("Error accepting application:", err);
-      alert(err.response?.data?.message || "Failed to accept match request.");
+      showToast("error", err.response?.data?.message || "Failed to accept match request.");
     }
   };
 
   const handleDeclineRequest = async (id: string) => {
     try {
       await api.patch(`/tuitions/applications/${id}/status`, { status: "Rejected" });
-      alert("Request declined successfully.");
+      showToast("info", "Request declined successfully.");
       fetchDashboardData();
     } catch (err: any) {
       console.error("Error declining application:", err);
-      alert(err.response?.data?.message || "Failed to decline match request.");
+      showToast("error", err.response?.data?.message || "Failed to decline match request.");
     }
   };
 
@@ -850,6 +882,28 @@ export default function TutorDashboardClient() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border text-sm font-bold animate-in slide-in-from-top-4 duration-200 ${
+          toastMessage.type === "success"
+            ? "bg-emerald-50 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800"
+            : toastMessage.type === "error"
+            ? "bg-rose-50 dark:rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800"
+            : "bg-blue-50 dark:bg-blue-950/90 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800"
+        }`}>
+          {toastMessage.type === "success" && (
+            <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {toastMessage.type === "error" && (
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+          )}
+          {toastMessage.type === "info" && (
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -1713,7 +1767,9 @@ export default function TutorDashboardClient() {
                                 <button
                                   onClick={() => {
                                     setShowHeaderMenu(false);
-                                    showToast("info", `Viewing profile of ${currentChat.otherParty?.name || "Student"}`);
+                                    if (currentChat.recipientId) {
+                                      router.push(`/students/${currentChat.recipientId}`);
+                                    }
                                   }}
                                   className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center gap-2.5 cursor-pointer"
                                 >
@@ -1889,7 +1945,7 @@ export default function TutorDashboardClient() {
                                             e.preventDefault();
                                             if (!currentChat.isBlocked) setActiveReactionPickerMsgId(msg.id);
                                           }}
-                                          className={`px-4 py-3 rounded-2xl text-[14px] leading-[20px] font-normal select-none shadow-2xs ${
+                                          className={`px-4 py-3 rounded-2xl text-[14px] leading-5 font-normal select-none shadow-2xs ${
                                             isMe
                                               ? "bg-[#0F5B47] text-white rounded-tr-xs"
                                               : "bg-[#E5E7EB] dark:bg-zinc-800 text-[#111827] dark:text-zinc-100 rounded-tl-xs"

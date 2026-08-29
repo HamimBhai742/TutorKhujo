@@ -96,6 +96,7 @@ const ChatAvatar: React.FC<{
       <div
         className={`${className} rounded-full overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 relative`}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src!}
           alt={name || "User"}
@@ -166,7 +167,6 @@ export default function StudentDashboardClient() {
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
-  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
@@ -2204,7 +2204,7 @@ export default function StudentDashboardClient() {
                                             e.preventDefault();
                                             if (!activeChat.isBlocked) setActiveReactionPickerMsgId(m.id);
                                           }}
-                                          className={`px-4 py-3 rounded-2xl text-[14px] leading-[20px] font-normal select-none shadow-2xs ${
+                                          className={`px-4 py-3 rounded-2xl text-[14px] leading-5 font-normal select-none shadow-2xs ${
                                             isMe
                                               ? "bg-[#0F5B47] text-white rounded-tr-xs"
                                               : "bg-[#E5E7EB] dark:bg-zinc-800 text-[#111827] dark:text-zinc-100 rounded-tl-xs"
