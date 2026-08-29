@@ -35,11 +35,11 @@ import {
   Send,
   ShieldCheck,
   Shield,
-  Phone,
   Ban,
   ArrowLeft,
   Smile,
-  MoreHorizontal
+  MoreHorizontal,
+  MoreVertical
 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
@@ -56,6 +56,64 @@ import {
 } from "@/data/dashboard";
 import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
 import { BANGLADESH_QUALIFICATIONS } from "@/data/qualifications";
+
+function getInitials(name?: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+const ChatAvatar: React.FC<{
+  src?: string | null;
+  name?: string;
+  className?: string;
+  textClassName?: string;
+  bgClassName?: string;
+}> = ({
+  src,
+  name,
+  className = "w-10 h-10",
+  textClassName = "text-xs font-black",
+  bgClassName = "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200",
+}) => {
+  const [imgError, setImgError] = useState(false);
+  const initials = getInitials(name);
+  const isValidSrc = Boolean(
+    src &&
+      typeof src === "string" &&
+      src.trim().length > 0 &&
+      !src.includes("null") &&
+      !src.includes("undefined") &&
+      !src.includes("default.png") &&
+      (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/"))
+  );
+
+  if (isValidSrc && !imgError) {
+    return (
+      <div
+        className={`${className} rounded-full overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 relative`}
+      >
+        <img
+          src={src!}
+          alt={name || "User"}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${className} rounded-full ${bgClassName} ${textClassName} flex items-center justify-center shrink-0 border border-zinc-200/60 dark:border-zinc-700 select-none shadow-2xs`}
+    >
+      <span>{initials}</span>
+    </div>
+  );
+};
 
 export default function StudentDashboardClient() {
   const searchParams = useSearchParams();
@@ -1821,20 +1879,12 @@ export default function StudentDashboardClient() {
                           }`}
                         >
                           <div className="relative shrink-0">
-                            <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-extrabold text-xs flex items-center justify-center shadow-xs overflow-hidden border border-zinc-200/60 dark:border-zinc-700">
-                              {avatarUrl ? (
-                                <img
-                                  src={avatarUrl}
-                                  alt={chat.studentName}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = "none";
-                                  }}
-                                />
-                              ) : (
-                                <span>{chat.studentName.slice(0, 2).toUpperCase()}</span>
-                              )}
-                            </div>
+                            <ChatAvatar
+                              src={avatarUrl}
+                              name={chat.studentName}
+                              className="w-10 h-10"
+                              textClassName="text-xs font-black"
+                            />
                             {isOnline && (
                               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#10B981] border-2 border-white dark:border-zinc-950 rounded-full" />
                             )}
@@ -1904,20 +1954,12 @@ export default function StudentDashboardClient() {
                           <ArrowLeft className="w-5 h-5" />
                         </button>
                         <div className="relative">
-                          <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-extrabold text-xs flex items-center justify-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                            {activeAvatarUrl ? (
-                              <img
-                                src={activeAvatarUrl}
-                                alt={activeChat.studentName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <span>{activeChat.studentName.slice(0, 2).toUpperCase()}</span>
-                            )}
-                          </div>
+                          <ChatAvatar
+                            src={activeAvatarUrl}
+                            name={activeChat.studentName}
+                            className="w-10 h-10"
+                            textClassName="text-xs font-black"
+                          />
                           {activeChat.isBlocked ? (
                             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-950 rounded-full" />
                           ) : isOnline ? (
@@ -1954,16 +1996,7 @@ export default function StudentDashboardClient() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {/* Voice call action button */}
-                        <button
-                          onClick={() => alert(`Calling ${activeChat.studentName}...`)}
-                          className="p-2 text-[#0F5B47] hover:bg-[#0F5B47]/10 rounded-full transition-colors cursor-pointer"
-                          title="Voice Call"
-                        >
-                          <Phone className="w-5 h-5" />
-                        </button>
-
+                      <div className="flex items-center gap-2">
                         {/* View Profile button */}
                         {activeChat.recipientId && (
                           <Link
@@ -2057,17 +2090,12 @@ export default function StudentDashboardClient() {
                                 >
                                   {/* Left: Tutor Avatar for incoming */}
                                   {!isMe && (
-                                    <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 overflow-hidden shadow-2xs">
-                                      {activeAvatarUrl ? (
-                                        <img
-                                          src={activeAvatarUrl}
-                                          alt={activeChat.studentName}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <span>{activeChat.studentName?.slice(0, 2).toUpperCase() || "T"}</span>
-                                      )}
-                                    </div>
+                                    <ChatAvatar
+                                      src={activeAvatarUrl}
+                                      name={activeChat.studentName}
+                                      className="w-8 h-8 mt-0.5"
+                                      textClassName="text-[11px] font-black"
+                                    />
                                   )}
 
                                   {/* Center: Bubble Container */}
@@ -2191,7 +2219,7 @@ export default function StudentDashboardClient() {
                                         <div className="relative">
                                           <button
                                             onClick={() => setActiveMenuMsgId(activeMenuMsgId === m.id ? null : m.id)}
-                                            className="opacity-0 group-hover:opacity-100 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 rounded transition-opacity cursor-pointer"
+                                            className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 rounded transition-all cursor-pointer inline-flex items-center justify-center"
                                             title="Options"
                                           >
                                             <MoreHorizontal className="w-3.5 h-3.5" />
@@ -2252,9 +2280,12 @@ export default function StudentDashboardClient() {
 
                                   {/* Right: User Initials Circle (matching App orange circle) */}
                                   {isMe && (
-                                    <div className="w-8 h-8 rounded-full bg-[#F97316] text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                                      <span>MH</span>
-                                    </div>
+                                    <ChatAvatar
+                                      name="MD Hamim"
+                                      className="w-8 h-8 mt-0.5"
+                                      bgClassName="bg-[#F97316] text-white"
+                                      textClassName="text-[11px] font-black text-white"
+                                    />
                                   )}
                                 </div>
                               </React.Fragment>
@@ -2264,13 +2295,12 @@ export default function StudentDashboardClient() {
                           {/* Real-time typing bubble */}
                           {isTyping && !activeChat.isBlocked && (
                             <div className="flex items-end gap-2.5 animate-in fade-in duration-150">
-                              <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 font-extrabold text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0">
-                                {activeAvatarUrl ? (
-                                  <img src={activeAvatarUrl} alt={activeChat.studentName} className="w-full h-full object-cover" />
-                                ) : (
-                                  <span>{activeChat.studentName?.slice(0, 2).toUpperCase() || "T"}</span>
-                                )}
-                              </div>
+                              <ChatAvatar
+                                src={activeAvatarUrl}
+                                name={activeChat.studentName}
+                                className="w-8 h-8"
+                                textClassName="text-[11px] font-black"
+                              />
                               <div className="bg-[#E5E7EB] dark:bg-zinc-800 px-4 py-3 rounded-2xl rounded-tl-xs flex items-center gap-1.5 shadow-xs">
                                 <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "0ms" }} />
                                 <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "150ms" }} />
