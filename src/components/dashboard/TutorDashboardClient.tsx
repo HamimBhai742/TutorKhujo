@@ -29,6 +29,7 @@ import {
   Smile,
   MoreHorizontal,
   MoreVertical,
+  User,
   Target,
   Calculator,
   FileText,
@@ -1709,6 +1710,17 @@ export default function TutorDashboardClient() {
                             />
                             <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 divide-y divide-zinc-100 dark:divide-zinc-800">
                               <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    showToast("info", `Viewing profile of ${currentChat.otherParty?.name || "Student"}`);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  <User className="w-4 h-4 text-[#0F5B47]" />
+                                  <span>View Student Profile</span>
+                                </button>
+
                                 <button
                                   onClick={() => {
                                     setShowHeaderMenu(false);
