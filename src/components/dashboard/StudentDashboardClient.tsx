@@ -159,6 +159,7 @@ export default function StudentDashboardClient() {
   const [isEditingSaving, setIsEditingSaving] = useState<boolean>(false);
   const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<string | null>(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState<boolean>(false);
   const [showDeleteConvModal, setShowDeleteConvModal] = useState<boolean>(false);
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
@@ -1996,44 +1997,73 @@ export default function StudentDashboardClient() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {/* View Profile button */}
-                        {activeChat.recipientId && (
-                          <Link
-                            href={`/tutors/${activeChat.recipientId}`}
-                            target="_blank"
-                            className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-200 transition-all text-xs font-bold flex items-center gap-1.5 shadow-2xs"
-                            title="View Profile"
-                          >
-                            <span>View Profile</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                          </Link>
-                        )}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                          className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-all cursor-pointer"
+                          title="More Options"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
 
-                        {activeChat.isBlocked ? (
-                          isBlockedByMe ? (
-                            <button
-                              onClick={handleToggleBlock}
-                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-2xs"
-                              title="Unblock Contact"
-                            >
-                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                              <span>Unblock</span>
-                            </button>
-                          ) : (
-                            <div className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 rounded-lg text-[10px] font-black flex items-center gap-1">
-                              <Ban className="w-3.5 h-3.5 text-rose-500" />
-                              <span>Blocked</span>
+                        {showHeaderMenu && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-30 cursor-default"
+                              onClick={() => setShowHeaderMenu(false)}
+                            />
+                            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 divide-y divide-zinc-100 dark:divide-zinc-800">
+                              <div className="py-1">
+                                {activeChat.recipientId && (
+                                  <Link
+                                    href={`/tutors/${activeChat.recipientId}`}
+                                    target="_blank"
+                                    onClick={() => setShowHeaderMenu(false)}
+                                    className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center justify-between cursor-pointer"
+                                  >
+                                    <span className="flex items-center gap-2.5">
+                                      <GraduationCap className="w-4 h-4 text-[#0F5B47]" />
+                                      <span>View Full Profile</span>
+                                    </span>
+                                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                                  </Link>
+                                )}
+                              </div>
+
+                              <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    handleToggleBlock();
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  {activeChat.isBlocked ? (
+                                    <>
+                                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                      <span>Unblock Tutor</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="w-4 h-4 text-rose-500" />
+                                      <span className="text-rose-600 dark:text-rose-400">Block Tutor</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    setShowDeleteConvModal(true);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 text-rose-500" />
+                                  <span>Clear Conversation</span>
+                                </button>
+                              </div>
                             </div>
-                          )
-                        ) : (
-                          <button
-                            onClick={handleToggleBlock}
-                            className="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-full transition-all cursor-pointer"
-                            title="Block Contact"
-                          >
-                            <Ban className="w-4 h-4" />
-                          </button>
+                          </>
                         )}
                       </div>
                     </div>
