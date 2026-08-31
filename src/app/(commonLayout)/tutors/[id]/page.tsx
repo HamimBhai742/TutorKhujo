@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
   Star,
   MapPin,
@@ -11,7 +10,6 @@ import {
   GraduationCap,
   Sparkles,
   Check,
-  Info,
   Zap,
   ChevronRight,
   ShieldCheck,
@@ -23,8 +21,7 @@ import {
   MessageSquarePlus,
   MessageSquare,
   BadgeCheck,
-  Lock,
-  Calendar
+  Lock
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";

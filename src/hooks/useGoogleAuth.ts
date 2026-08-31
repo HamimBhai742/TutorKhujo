@@ -34,12 +34,13 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
     document.body.appendChild(script);
   }, []);
 
-  const handleCredentialResponse = useCallback(async (response: any) => {
+  const handleCredentialResponse = useCallback(async (response: any, overrideRole?: "student" | "tutor") => {
     setIsLoading(true);
     setError("");
     try {
       const idToken = response.credential;
-      const res = await api.post("/auth/google-login", { idToken, role });
+      const finalRole = overrideRole || role;
+      const res = await api.post("/auth/google-login", { idToken, role: finalRole });
       const { accessToken, refreshToken, user } = res.data.data;
       
       login(accessToken, user, refreshToken);
@@ -61,52 +62,54 @@ export const useGoogleAuth = (role?: "student" | "tutor") => {
     }
   }, [role, login]);
 
-  const renderGoogleButton = useCallback((elementId: string, options?: any) => {
+  // Parse id_token from hash fragment on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    const hash = window.location.hash;
+    if (hash && hash.includes("id_token=")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const idToken = params.get("id_token");
+      if (idToken) {
+        // Clear hash from URL cleanly
+        window.history.replaceState(null, "", window.location.pathname);
+        
+        // Retrieve role
+        const savedRole = localStorage.getItem("google_auth_role") as "student" | "tutor" | null;
+        localStorage.removeItem("google_auth_role");
+        
+        // Submit the credential
+        const finalRole = savedRole || role;
+        setTimeout(() => {
+          handleCredentialResponse({ credential: idToken }, finalRole);
+        }, 0);
+      }
+    }
+  }, [handleCredentialResponse, role]);
+
+  const signInWithGoogleRedirect = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     if (!clientId) {
-      console.warn("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured. Google Sign-In button will not render.");
+      console.warn("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured.");
       return;
     }
-
-    if (!window.google?.accounts?.id) {
-      return;
+    
+    const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+    const nonce = Math.random().toString(36).substring(2);
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20email%20profile&nonce=${nonce}&prompt=select_account`;
+    
+    if (role) {
+      localStorage.setItem("google_auth_role", role);
     }
-
-    try {
-      // Initialize Google accounts client
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleCredentialResponse,
-        auto_select: false,
-      });
-
-      // Render the button
-      const container = document.getElementById(elementId);
-      if (container) {
-        window.google.accounts.id.renderButton(
-          container,
-          options || {
-            theme: "outline",
-            size: "large",
-            width: "360", // custom width to fit design nicely
-            text: "continue_with",
-            shape: "rectangular",
-          }
-        );
-      }
-
-      // Display One Tap prompt
-      window.google.accounts.id.prompt();
-    } catch (err) {
-      console.error("Error rendering Google button:", err);
-    }
-  }, [handleCredentialResponse]);
+    
+    window.location.href = googleAuthUrl;
+  }, [role]);
 
   return {
     error,
     setError,
     isLoading,
     scriptLoaded,
-    renderGoogleButton,
+    signInWithGoogleRedirect,
   };
 };

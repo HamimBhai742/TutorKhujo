@@ -54,7 +54,7 @@ export default function PrivacyPolicyPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-linear-to-br from-[#063b2f] via-[#0F5B47] to-[#04211a] text-white py-16 px-6 md:px-12 text-center">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(60,208,112,0.15),transparent_40%)]"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[24px_24px]"></div>
         
         <div className="relative z-10 max-w-3xl mx-auto space-y-4 animate-fade-in-up">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-semibold uppercase tracking-wider border border-white/10">
