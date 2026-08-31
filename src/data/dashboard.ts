@@ -184,6 +184,8 @@ export interface ChatContact {
   studentName: string;
   role?: string;
   avatarBg: string;
+  avatar?: string;
+  profilePic?: string;
   lastMessage: string;
   time: string;
   unreadCount: number;

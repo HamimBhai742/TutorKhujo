@@ -91,6 +91,7 @@ function SidebarNavigation() {
   const navigation = user?.role === "tutor"
     ? [
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
+        { name: "My Profile", href: "/dashboard?tab=profile", active: currentTab === "profile", icon: User },
         { name: "Tuition Requests", href: "/dashboard?tab=requests", active: currentTab === "requests", icon: Inbox },
         { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: displayUnread },
         { name: "Active Tuitions", href: "/dashboard?tab=active", active: currentTab === "active", icon: BookOpen },
@@ -100,6 +101,7 @@ function SidebarNavigation() {
     : user?.role === "student"
     ? [
         { name: "Overview", href: "/dashboard", active: currentTab === "overview", icon: LayoutDashboard },
+        { name: "My Profile", href: "/dashboard?tab=profile", active: currentTab === "profile", icon: User },
         { name: "My Tuition Posts", href: "/dashboard?tab=posts", active: currentTab === "posts", icon: FileText },
         { name: "Tutor Applications", href: "/dashboard?tab=applications", active: currentTab === "applications", icon: Users },
         { name: "Messages", href: "/dashboard?tab=messages", active: currentTab === "messages", icon: MessageSquare, badge: displayUnread },
@@ -200,7 +202,10 @@ export default function DashboardLayout({
               <span>Update Tutor Profile</span>
             </Link>
           )}
-          <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/50 mb-3">
+          <Link
+            href="/dashboard?tab=profile"
+            className="flex items-center justify-between rounded-xl bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800 p-3 mb-3 cursor-pointer transition-all border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+          >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                 <User size={18} />
@@ -214,7 +219,7 @@ export default function DashboardLayout({
                 </p>
               </div>
             </div>
-          </div>
+          </Link>
           <button
             onClick={async () => {
               await logout();

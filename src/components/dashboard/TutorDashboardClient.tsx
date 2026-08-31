@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import type { Socket } from "socket.io-client";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -25,13 +25,17 @@ import {
   Trash2,
   Ban,
   ShieldCheck,
+  Shield,
   Smile,
   MoreHorizontal,
+  MoreVertical,
+  User,
   Target,
   Calculator,
   FileText,
   Plus,
-  Printer
+  Printer,
+  AlertTriangle
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
@@ -39,6 +43,7 @@ import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import QuickApplyModal from "@/components/tuitions/QuickApplyModal";
 import InvoiceModal from "@/components/dashboard/InvoiceModal";
 import SalaryCalculatorModal from "@/components/dashboard/SalaryCalculatorModal";
+import ProfileClient from "@/components/dashboard/ProfileClient";
 import {
   TuitionRequest,
   ActiveTuition,
@@ -48,6 +53,65 @@ import {
   MessageReactionItem
 } from "@/data/dashboard";
 import api, { SOCKET_URL } from "@/lib/api";
+
+function getInitials(name?: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+const ChatAvatar: React.FC<{
+  src?: string | null;
+  name?: string;
+  className?: string;
+  textClassName?: string;
+  bgClassName?: string;
+}> = ({
+  src,
+  name,
+  className = "w-10 h-10",
+  textClassName = "text-xs font-black",
+  bgClassName = "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200",
+}) => {
+  const [imgError, setImgError] = useState(false);
+  const initials = getInitials(name);
+  const isValidSrc = Boolean(
+    src &&
+      typeof src === "string" &&
+      src.trim().length > 0 &&
+      !src.includes("null") &&
+      !src.includes("undefined") &&
+      !src.includes("default.png") &&
+      (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/"))
+  );
+
+  if (isValidSrc && !imgError) {
+    return (
+      <div
+        className={`${className} rounded-full overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 relative`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src!}
+          alt={name || "User"}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${className} rounded-full ${bgClassName} ${textClassName} flex items-center justify-center shrink-0 border border-zinc-200/60 dark:border-zinc-700 select-none shadow-2xs`}
+    >
+      <span>{initials}</span>
+    </div>
+  );
+};
 
 export default function TutorDashboardClient() {
   const searchParams = useSearchParams();
@@ -83,17 +147,36 @@ export default function TutorDashboardClient() {
   ]);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
   const [myUserId, setMyUserId] = useState<string>("");
+  const [myUserName, setMyUserName] = useState<string>("Me");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState<string>("");
   const [isEditingSaving, setIsEditingSaving] = useState<boolean>(false);
   const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<string | null>(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState<boolean>(false);
   const [showDeleteConvModal, setShowDeleteConvModal] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (type: "success" | "error" | "info", text: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage({ type, text });
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 4000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const socketRef = React.useRef<Socket | null>(null);
   const activeChatIdRef = React.useRef<string>(""); // ref to avoid socket reconnect on chat switch
   const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
-  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
@@ -141,6 +224,25 @@ export default function TutorDashboardClient() {
     return age <= 30 * 60 * 1000;
   };
 
+  const formatChatDateLabel = (dateStr?: string | Date): string => {
+    if (!dateStr) return "Today";
+    const msgDate = new Date(dateStr);
+    if (isNaN(msgDate.getTime())) return "Today";
+    const today = new Date();
+
+    if (msgDate.toDateString() === today.toDateString()) return "Today";
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (msgDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+
+    return msgDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: msgDate.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+    });
+  };
+
   const handleEditMessage = async (msgId: string) => {
     if (!editingMessageText.trim() || isEditingSaving) return;
     try {
@@ -160,7 +262,9 @@ export default function TutorDashboardClient() {
       );
       setEditingMessageId(null);
       setEditingMessageText("");
-    } catch {
+      showToast("success", "Message updated");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update message");
     } finally {
       setIsEditingSaving(false);
     }
@@ -179,7 +283,10 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch {}
+      showToast("success", "Message unsent");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to delete message");
+    }
   };
 
   const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
@@ -236,7 +343,9 @@ export default function TutorDashboardClient() {
           )
         );
       }
-    } catch {}
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update reaction");
+    }
   };
 
   const handleDeleteConversation = async () => {
@@ -247,7 +356,10 @@ export default function TutorDashboardClient() {
       setActiveChatIdState("");
       activeChatIdRef.current = "";
       setShowDeleteConvModal(false);
-    } catch {}
+      showToast("success", "Conversation deleted");
+    } catch {
+      showToast("error", "Failed to delete conversation");
+    }
   };
 
   const handleToggleBlock = async () => {
@@ -262,7 +374,10 @@ export default function TutorDashboardClient() {
             : c
         )
       );
-    } catch {}
+      showToast("success", updated.isBlocked ? "Contact blocked" : "Contact unblocked");
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Failed to update block status");
+    }
   };
 
   // Availability matrix state
@@ -339,6 +454,9 @@ export default function TutorDashboardClient() {
           }
           if (userData.id) {
             setMyUserId(userData.id);
+          }
+          if (userData.name || userData.fullName) {
+            setMyUserName(userData.name || userData.fullName);
           }
         }
       }
@@ -663,7 +781,7 @@ export default function TutorDashboardClient() {
       );
     } catch (err) {
       console.error("Error sending message:", err);
-      alert("Failed to send message.");
+      showToast("error", "Failed to send message.");
     }
   };
 
@@ -684,32 +802,32 @@ export default function TutorDashboardClient() {
   const handleSaveAvailability = async () => {
     try {
       await api.patch("/user/me", { availability });
-      alert("Availability preferences saved successfully!");
+      showToast("success", "Availability preferences saved successfully!");
     } catch (err: any) {
       console.error("Error saving availability:", err);
-      alert(err.response?.data?.message || "Failed to save availability preferences.");
+      showToast("error", err.response?.data?.message || "Failed to save availability preferences.");
     }
   };
 
   const handleAcceptRequest = async (req: TuitionRequest) => {
     try {
       await api.patch(`/tuitions/applications/${req.id}/status`, { status: "Hired" });
-      alert(`Success! You have accepted the tuition request from ${req.studentName}.`);
+      showToast("success", `Success! You have accepted the tuition request from ${req.studentName}.`);
       fetchDashboardData();
     } catch (err: any) {
       console.error("Error accepting application:", err);
-      alert(err.response?.data?.message || "Failed to accept match request.");
+      showToast("error", err.response?.data?.message || "Failed to accept match request.");
     }
   };
 
   const handleDeclineRequest = async (id: string) => {
     try {
       await api.patch(`/tuitions/applications/${id}/status`, { status: "Rejected" });
-      alert("Request declined successfully.");
+      showToast("info", "Request declined successfully.");
       fetchDashboardData();
     } catch (err: any) {
       console.error("Error declining application:", err);
-      alert(err.response?.data?.message || "Failed to decline match request.");
+      showToast("error", err.response?.data?.message || "Failed to decline match request.");
     }
   };
 
@@ -764,6 +882,28 @@ export default function TutorDashboardClient() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border text-sm font-bold animate-in slide-in-from-top-4 duration-200 ${
+          toastMessage.type === "success"
+            ? "bg-emerald-50 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800"
+            : toastMessage.type === "error"
+            ? "bg-rose-50 dark:rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800"
+            : "bg-blue-50 dark:bg-blue-950/90 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800"
+        }`}>
+          {toastMessage.type === "success" && (
+            <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {toastMessage.type === "error" && (
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+          )}
+          {toastMessage.type === "info" && (
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -773,6 +913,7 @@ export default function TutorDashboardClient() {
             {currentTab === "active" && "Active Tuitions"}
             {currentTab === "earnings" && "Earnings & Payments"}
             {currentTab === "availability" && "Availability Grid"}
+            {currentTab === "profile" && "Profile Settings"}
           </h2>
           <p className="text-sm font-semibold text-[#5F6E6B] dark:text-zinc-400 mt-1">
             {currentTab === "overview" && "Manage classes, schedules, and monitor search rankings."}
@@ -780,6 +921,7 @@ export default function TutorDashboardClient() {
             {currentTab === "active" && "Track current student courses and session histories."}
             {currentTab === "earnings" && "Review payouts, current balances, and accounting logs."}
             {currentTab === "availability" && "Control your teaching schedule availability."}
+            {currentTab === "profile" && "Manage your personal details, credentials, preferences, and documents."}
           </p>
         </div>
 
@@ -1475,13 +1617,14 @@ export default function TutorDashboardClient() {
                 </div>
 
                 {/* Contacts loop */}
-                <div className="flex-1 overflow-y-auto divide-y divide-zinc-100/50 dark:divide-zinc-900/40">
+                <div className="flex-1 overflow-y-auto divide-y divide-zinc-100/60 dark:divide-zinc-900/40">
                   {chats
                     .filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase()))
                     .map((chat) => {
                       const isActive = chat.id === activeChatId;
                       const isOnline = chat.recipientId ? onlineUsers.has(chat.recipientId) : false;
                       const isTyping = typingUsers[chat.id];
+                      const avatarUrl = chat.profilePic || chat.avatar;
 
                       return (
                         <button
@@ -1490,55 +1633,43 @@ export default function TutorDashboardClient() {
                             setActiveChatId(chat.id);
                             setChatMobileView("chat");
                           }}
-                          className={`w-full text-left p-4 flex gap-3 items-center transition-all duration-200 border-l-4 cursor-pointer ${
+                          className={`w-full text-left p-3.5 flex gap-3 items-center transition-all duration-150 border-l-4 cursor-pointer ${
                             isActive
-                              ? "bg-[#0F5B47]/5 dark:bg-[#188c6e]/5 border-[#0F5B47] dark:border-[#188c6e]"
-                              : "border-transparent hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30"
+                              ? "bg-[#0F5B47]/8 dark:bg-[#188c6e]/10 border-[#0F5B47] dark:border-[#188c6e]"
+                              : "border-transparent hover:bg-zinc-50/80 dark:hover:bg-zinc-900/30"
                           }`}
                         >
                           <div className="relative shrink-0">
-                            <div className={`w-10 h-10 rounded-full ${chat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs`}>
-                              {chat.studentName.charAt(0).toUpperCase()}
-                            </div>
+                            <ChatAvatar
+                              src={avatarUrl}
+                              name={chat.studentName}
+                              className="w-10 h-10"
+                              textClassName="text-xs font-black"
+                            />
                             {isOnline && (
-                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-emerald-400" />
+                              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#10B981] border-2 border-white dark:border-zinc-950 rounded-full" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <h4 className="text-xs font-black text-zinc-850 dark:text-white truncate flex items-center gap-1.5">
-                                <span>{chat.studentName}</span>
-                                {chat.isBlocked && (
-                                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
-                                    Blocked
-                                  </span>
-                                )}
+                            <div className="flex justify-between items-center mb-0.5">
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                                {chat.studentName}
                               </h4>
-                              <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold shrink-0">
+                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium shrink-0">
                                 {chat.time}
                               </span>
                             </div>
-                            <p className={`text-[10px] truncate font-medium ${
+                            <p className={`text-[11px] truncate ${
                               isTyping
-                                ? "text-emerald-600 dark:text-emerald-400 font-bold animate-pulse"
-                                : "text-zinc-500 dark:text-zinc-450"
+                                ? "text-[#0F5B47] dark:text-emerald-400 font-bold animate-pulse"
+                                : "text-zinc-500 dark:text-zinc-400"
                             }`}>
                               {isTyping ? "typing..." : chat.lastMessage}
                             </p>
                           </div>
-                          {(chat.unreadCount || 0) > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-[#F26A1B] text-white text-[9px] font-black flex items-center justify-center shrink-0 shadow-xs">
-                              {chat.unreadCount}
-                            </span>
-                          )}
                         </button>
                       );
                     })}
-                  {chats.filter((c) => c.studentName.toLowerCase().includes(chatSearch.toLowerCase())).length === 0 && (
-                    <div className="text-center py-12 text-zinc-400 text-xs font-semibold">
-                      No conversations found.
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1548,10 +1679,11 @@ export default function TutorDashboardClient() {
                 const isOnline = currentChat?.recipientId ? onlineUsers.has(currentChat.recipientId) : false;
                 const isTyping = currentChat ? typingUsers[currentChat.id] : false;
                 const isBlockedByMe = currentChat?.isBlocked && currentChat?.blockedById === myUserId;
+                const activeAvatarUrl = currentChat?.profilePic || currentChat?.avatar;
 
                 if (!currentChat) {
                   return (
-                    <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold p-8 text-center">
+                    <div className="flex-1 flex flex-col items-center justify-center bg-[#FAFAFA] dark:bg-zinc-900/10 text-zinc-400 text-sm font-semibold p-8 text-center">
                       <MessageSquare className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mb-3" />
                       <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400">Select a conversation</p>
                       <p className="text-xs text-zinc-400 mt-1">Choose a student chat thread from the left to start messaging.</p>
@@ -1562,363 +1694,393 @@ export default function TutorDashboardClient() {
                 return (
                   <div className={`${
                     chatMobileView === "list" ? "hidden" : "flex"
-                  } md:flex flex-1 flex-col h-full bg-zinc-50/30 dark:bg-zinc-900/10`}>
+                  } md:flex flex-1 flex-col h-full bg-[#FAFAFA] dark:bg-zinc-950`}>
                     
                     {/* Active Chat Header */}
-                    <div className="px-5 py-3.5 bg-white dark:bg-zinc-950 border-b border-zinc-150/60 dark:border-zinc-900 flex items-center justify-between shrink-0 shadow-2xs">
+                    <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-zinc-200/80 dark:border-zinc-900 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => setChatMobileView("list")}
                           className="md:hidden p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer"
                         >
-                          <ArrowLeft className="w-4 h-4 stroke-[3px]" />
+                          <ArrowLeft className="w-5 h-5" />
                         </button>
                         <div className="relative">
-                          <div className={`w-10 h-10 rounded-full ${currentChat.avatarBg} text-white font-extrabold text-xs flex items-center justify-center shadow-xs`}>
-                            {currentChat.studentName.charAt(0).toUpperCase()}
-                          </div>
+                          <ChatAvatar
+                            src={activeAvatarUrl}
+                            name={currentChat.studentName}
+                            className="w-10 h-10"
+                            textClassName="text-xs font-black"
+                          />
                           {currentChat.isBlocked ? (
-                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-rose-400" />
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-950 rounded-full" />
                           ) : isOnline ? (
-                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-950 rounded-full ring-1 ring-emerald-400" />
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#10B981] border-2 border-white dark:border-zinc-950 rounded-full" />
                           ) : null}
                         </div>
                         <div>
-                          <h4 className="text-xs font-black text-zinc-850 dark:text-white leading-tight">
+                          <h4 className="text-[15px] font-extrabold text-zinc-900 dark:text-white leading-tight">
                             {currentChat.studentName}
                           </h4>
                           {currentChat.isBlocked ? (
-                            <span className="text-[10px] font-black flex items-center gap-1.5 mt-0.5 text-rose-600 dark:text-rose-400">
+                            <span className="text-[11px] font-bold flex items-center gap-1.5 mt-0.5 text-rose-600 dark:text-rose-400">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                              {isBlockedByMe ? "Blocked by you • Chat suspended" : "You are blocked • Chat suspended"}
+                              {isBlockedByMe ? "Blocked by you" : "You are blocked"}
                             </span>
                           ) : isTyping ? (
-                            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] text-[#0F5B47] dark:text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
                               <span className="inline-flex items-center gap-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0ms" }} />
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "150ms" }} />
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                                <span className="w-1 h-1 rounded-full bg-[#0F5B47] animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-1 h-1 rounded-full bg-[#0F5B47] animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-1 h-1 rounded-full bg-[#0F5B47] animate-bounce" style={{ animationDelay: "300ms" }} />
                               </span>
                               <span>typing...</span>
                             </span>
                           ) : (
-                            <span className={`text-[10px] font-bold flex items-center gap-1.5 mt-0.5 ${
-                              isOnline ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 dark:text-zinc-500"
+                            <span className={`text-[11px] font-bold flex items-center gap-1.5 mt-0.5 ${
+                              isOnline ? "text-[#10B981]" : "text-zinc-400 dark:text-zinc-500"
                             }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"}`} />
-                              {isOnline ? "Online • Student" : "Offline • Student"}
+                              <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-[#10B981] animate-pulse" : "bg-zinc-400"}`} />
+                              {isOnline ? "Online now" : "Offline"}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Header Actions */}
-                      <div className="flex items-center gap-2">
-                        {currentChat.isBlocked ? (
-                          isBlockedByMe ? (
-                            <button
-                              onClick={handleToggleBlock}
-                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black shadow-2xs"
-                              title="Unblock Contact"
-                            >
-                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                              <span>Unblock</span>
-                            </button>
-                          ) : (
-                            <div className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 rounded-lg text-[10px] font-black flex items-center gap-1">
-                              <Ban className="w-3.5 h-3.5 text-rose-500" />
-                              <span>Blocked</span>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                          className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-all cursor-pointer"
+                          title="More Options"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+
+                        {showHeaderMenu && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-30 cursor-default"
+                              onClick={() => setShowHeaderMenu(false)}
+                            />
+                            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 divide-y divide-zinc-100 dark:divide-zinc-800">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    if (currentChat.recipientId) {
+                                      router.push(`/students/${currentChat.recipientId}`);
+                                    }
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  <User className="w-4 h-4 text-[#0F5B47]" />
+                                  <span>View Student Profile</span>
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    handleToggleBlock();
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  {currentChat.isBlocked ? (
+                                    <>
+                                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                      <span>Unblock Student</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="w-4 h-4 text-rose-500" />
+                                      <span className="text-rose-600 dark:text-rose-400">Block Student</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setShowHeaderMenu(false);
+                                    setShowDeleteConvModal(true);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 text-rose-500" />
+                                  <span>Clear Conversation</span>
+                                </button>
+                              </div>
                             </div>
-                          )
-                        ) : (
-                          <button
-                            onClick={handleToggleBlock}
-                            className="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
-                            title="Block Contact"
-                          >
-                            <Ban className="w-4 h-4" />
-                            <span className="hidden sm:inline text-[11px]">Block</span>
-                          </button>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {/* Messages Body */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                    {/* Info Alert Banner */}
+                    <div className="px-4 py-3 bg-[#E6F4EA] dark:bg-emerald-950/30 border-b border-[#0F5B47]/10 dark:border-emerald-900/40 flex items-center gap-2.5 text-xs font-bold text-[#0F5B47] dark:text-emerald-300 shrink-0">
+                      <Shield className="w-4 h-4 text-[#0F5B47] dark:text-emerald-400 shrink-0" />
+                      <span>Contact shared — you can now call or message directly</span>
+                    </div>
+
+                    {/* Messages Timeline */}
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
                       {messagesLoading ? (
-                        /* WhatsApp / Messenger Skeleton Message Loader */
                         <div className="space-y-4 py-6 animate-pulse">
                           <div className="flex justify-start">
-                            <div className="w-56 h-12 bg-zinc-200 dark:bg-zinc-850 rounded-2xl rounded-bl-xs" />
+                            <div className="w-56 h-12 bg-zinc-200 dark:bg-zinc-850 rounded-2xl rounded-tl-xs" />
                           </div>
                           <div className="flex justify-end">
-                            <div className="w-64 h-14 bg-emerald-200/50 dark:bg-emerald-950/40 rounded-2xl rounded-br-xs" />
-                          </div>
-                          <div className="flex justify-start">
-                            <div className="w-48 h-10 bg-zinc-200 dark:bg-zinc-850 rounded-2xl rounded-bl-xs" />
-                          </div>
-                          <div className="flex justify-end">
-                            <div className="w-52 h-11 bg-emerald-200/50 dark:bg-emerald-950/40 rounded-2xl rounded-br-xs" />
+                            <div className="w-64 h-14 bg-emerald-200/50 dark:bg-emerald-950/40 rounded-2xl rounded-tr-xs" />
                           </div>
                           <div className="flex items-center justify-center gap-2 pt-2 text-zinc-400 text-xs font-semibold">
-                            <Loader2 className="w-4 h-4 animate-spin text-[#0F5B47] dark:text-[#188c6e]" />
+                            <Loader2 className="w-4 h-4 animate-spin text-[#0F5B47]" />
                             <span>Loading conversation...</span>
                           </div>
                         </div>
                       ) : (
                         <>
-                          {currentChat.messages?.map((msg) => {
-                            const isTutor = msg.sender === "tutor";
+                          {currentChat.messages?.map((msg, mIdx) => {
+                            const isMe = msg.sender === "tutor";
                             const isEditingThis = editingMessageId === msg.id;
                             const isEligible = isMessageEligibleForAction(msg.createdAt);
+                            const hasReactions = Array.isArray(msg.reactions) && msg.reactions.length > 0;
+                            
+                            // Date separation check
+                            const currentDateLabel = formatChatDateLabel(msg.createdAt);
+                            const prevMessage = currentChat.messages ? currentChat.messages[mIdx - 1] : undefined;
+                            const prevDateLabel = prevMessage ? formatChatDateLabel(prevMessage.createdAt) : null;
+                            const showDateSeparator = mIdx === 0 || currentDateLabel !== prevDateLabel;
 
                             return (
-                              <div
-                                key={msg.id}
-                                className={`flex flex-col group ${isTutor ? "items-end" : "items-start"} animate-in fade-in slide-in-from-bottom-1 duration-200`}
-                              >
-                                {isEditingThis ? (
-                                  <div className="flex items-center gap-2 max-w-md w-full bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border-2 border-[#0F5B47] shadow-md animate-in fade-in zoom-in-95 duration-150">
-                                    <input
-                                      type="text"
-                                      value={editingMessageText}
-                                      onChange={(e) => setEditingMessageText(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !isEditingSaving) handleEditMessage(msg.id);
-                                        if (e.key === "Escape" && !isEditingSaving) setEditingMessageId(null);
-                                      }}
-                                      disabled={isEditingSaving}
-                                      autoFocus
-                                      className="flex-1 px-3 py-1.5 bg-transparent text-xs font-semibold outline-hidden text-zinc-900 dark:text-white"
-                                    />
-                                    <button
-                                      onClick={() => handleEditMessage(msg.id)}
-                                      disabled={isEditingSaving || !editingMessageText.trim()}
-                                      className="p-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl cursor-pointer transition-all shrink-0 flex items-center justify-center"
-                                      title="Save Changes"
-                                    >
-                                      {isEditingSaving ? (
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      ) : (
-                                        <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingMessageId(null)}
-                                      disabled={isEditingSaving}
-                                      className="p-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl cursor-pointer transition-all shrink-0"
-                                      title="Cancel"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
+                              <React.Fragment key={msg.id}>
+                                {showDateSeparator && (
+                                  <div className="flex justify-center my-4">
+                                    <span className="px-3 py-1 bg-[#E5E7EB] dark:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 rounded-lg shadow-2xs">
+                                      {currentDateLabel}
+                                    </span>
                                   </div>
-                                ) : (
-                                  <div className={`relative flex items-center gap-1.5 ${isTutor ? "flex-row-reverse" : "flex-row"}`}>
-                                    {/* 3-Dot Options Button on hover */}
-                                    {!currentChat.isBlocked && (
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 relative">
-                                        <button
-                                          onClick={() => {
-                                            setActiveMenuMsgId(activeMenuMsgId === msg.id ? null : msg.id);
-                                            setActiveReactionPickerMsgId(null);
-                                          }}
-                                          className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
-                                          title="More options"
-                                        >
-                                          <MoreHorizontal className="w-4 h-4" />
-                                        </button>
+                                )}
 
-                                        {/* 3-Dot Dropdown Menu */}
-                                        {activeMenuMsgId === msg.id && (
+                                <div
+                                  className={`w-full flex items-start gap-2.5 my-2.5 ${
+                                    isMe ? "justify-end" : "justify-start"
+                                  } group animate-in fade-in duration-150`}
+                                >
+                                  {/* Left: Student Avatar for incoming */}
+                                  {!isMe && (
+                                    <ChatAvatar
+                                      src={activeAvatarUrl}
+                                      name={currentChat.studentName}
+                                      className="w-8 h-8 mt-0.5"
+                                      textClassName="text-[11px] font-black"
+                                    />
+                                  )}
+
+                                  {/* Center: Bubble Container */}
+                                  <div className="max-w-[70%] flex flex-col">
+                                    {isEditingThis ? (
+                                      <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 p-2 rounded-2xl border-2 border-[#0F5B47] shadow-md">
+                                        <input
+                                          type="text"
+                                          value={editingMessageText}
+                                          onChange={(e) => setEditingMessageText(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !isEditingSaving) handleEditMessage(msg.id);
+                                            if (e.key === "Escape" && !isEditingSaving) setEditingMessageId(null);
+                                          }}
+                                          disabled={isEditingSaving}
+                                          autoFocus
+                                          className="flex-1 px-3 py-1 bg-transparent text-sm font-semibold outline-hidden text-zinc-900 dark:text-white"
+                                        />
+                                        <button
+                                          onClick={() => handleEditMessage(msg.id)}
+                                          disabled={isEditingSaving || !editingMessageText.trim()}
+                                          className="p-1.5 bg-[#0F5B47] hover:bg-[#0c4a3a] text-white rounded-lg cursor-pointer"
+                                        >
+                                          <Check className="w-4 h-4 stroke-[3px]" />
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingMessageId(null)}
+                                          className="p-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-600 rounded-lg cursor-pointer"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="relative">
+                                        {/* Floating Messenger Emoji Reaction Bar */}
+                                        {activeReactionPickerMsgId === msg.id && (
                                           <>
                                             <div
                                               className="fixed inset-0 z-20 cursor-default"
-                                              onClick={() => setActiveMenuMsgId(null)}
+                                              onClick={() => setActiveReactionPickerMsgId(null)}
                                             />
                                             <div
-                                              className={`absolute bottom-full mb-1 ${
-                                                isTutor ? "right-0" : "left-0"
-                                              } w-36 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-150`}
+                                              className={`absolute bottom-full mb-2 ${
+                                                isMe ? "right-0" : "left-0"
+                                              } flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-full px-2.5 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150`}
                                             >
-                                              <button
-                                                onClick={() => {
-                                                  setActiveReactionPickerMsgId(msg.id);
-                                                  setActiveMenuMsgId(null);
-                                                }}
-                                                className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 flex items-center gap-2 cursor-pointer"
-                                              >
-                                                <Smile className="w-3.5 h-3.5 text-amber-500" />
-                                                <span>React</span>
-                                              </button>
-
-                                              {isTutor && isEligible && (
-                                                <>
+                                              {REACTION_EMOJIS.map((emo) => {
+                                                const hasMyReaction = msg.reactions?.some(
+                                                  (r) => r.userId === myUserId && r.emoji === emo
+                                                );
+                                                return (
                                                   <button
-                                                    onClick={() => {
-                                                      setEditingMessageId(msg.id);
-                                                      setEditingMessageText(msg.content);
-                                                      setActiveMenuMsgId(null);
-                                                    }}
-                                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 flex items-center gap-2 cursor-pointer"
+                                                    key={emo}
+                                                    onClick={() => handleToggleReaction(msg.id, emo)}
+                                                    className={`w-7 h-7 flex items-center justify-center rounded-full hover:scale-135 active:scale-110 transition-transform cursor-pointer text-base ${
+                                                      hasMyReaction ? "bg-emerald-100 dark:bg-emerald-950/80 scale-115" : ""
+                                                    }`}
+                                                    title={emo}
                                                   >
-                                                    <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-                                                    <span>Edit</span>
+                                                    {emo}
                                                   </button>
-                                                  <button
-                                                    onClick={() => {
-                                                      handleDeleteMessage(msg.id);
-                                                      setActiveMenuMsgId(null);
-                                                    }}
-                                                    className="w-full px-3 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 cursor-pointer"
-                                                  >
-                                                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                                    <span>Unsend</span>
-                                                  </button>
-                                                </>
-                                              )}
+                                                );
+                                              })}
                                             </div>
                                           </>
+                                        )}
+
+                                        {/* Message Bubble */}
+                                        <div
+                                          onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            if (!currentChat.isBlocked) setActiveReactionPickerMsgId(msg.id);
+                                          }}
+                                          className={`px-4 py-3 rounded-2xl text-[14px] leading-5 font-normal select-none shadow-2xs ${
+                                            isMe
+                                              ? "bg-[#0F5B47] text-white rounded-tr-xs"
+                                              : "bg-[#E5E7EB] dark:bg-zinc-800 text-[#111827] dark:text-zinc-100 rounded-tl-xs"
+                                          }`}
+                                        >
+                                          {msg.content}
+                                        </div>
+
+                                        {/* Reaction Badges Pill */}
+                                        {hasReactions && (
+                                          <div
+                                            className={`absolute -bottom-2.5 ${
+                                              isMe ? "left-2" : "right-2"
+                                            } flex items-center z-10`}
+                                          >
+                                            <button
+                                              onClick={() => setActiveReactionPickerMsgId(msg.id)}
+                                              className="inline-flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-full px-2 py-0.5 shadow-xs cursor-pointer hover:scale-105 transition-all text-xs"
+                                            >
+                                              <span>{Array.from(new Set(msg.reactions!.map((r) => r.emoji))).join("")}</span>
+                                              {msg.reactions!.length > 1 && (
+                                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+                                                  {msg.reactions!.length}
+                                                </span>
+                                              )}
+                                            </button>
+                                          </div>
                                         )}
                                       </div>
                                     )}
 
-                                    {/* Floating Messenger Emoji Reaction Bar & Bubble */}
-                                    <div className="relative">
-                                      {activeReactionPickerMsgId === msg.id && (
-                                        <>
-                                          <div
-                                            className="fixed inset-0 z-20 cursor-default"
-                                            onClick={() => setActiveReactionPickerMsgId(null)}
-                                          />
-                                          <div
-                                            className={`absolute bottom-full mb-2 ${
-                                              isTutor ? "right-0" : "left-0"
-                                            } flex items-center gap-1 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-full px-2.5 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150`}
-                                          >
-                                            {REACTION_EMOJIS.map((emo) => {
-                                              const hasMyReaction = msg.reactions?.some(
-                                                (r) => r.userId === myUserId && r.emoji === emo
-                                              );
-                                              return (
-                                                <button
-                                                  key={emo}
-                                                  onClick={() => handleToggleReaction(msg.id, emo)}
-                                                  className={`w-7 h-7 flex items-center justify-center rounded-full hover:scale-135 active:scale-110 transition-transform cursor-pointer text-base ${
-                                                    hasMyReaction
-                                                      ? "bg-emerald-100 dark:bg-emerald-950/80 scale-115 shadow-2xs"
-                                                      : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                                  }`}
-                                                  title={emo}
-                                                >
-                                                  {emo}
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
-                                        </>
+                                    {/* Status Row (time + checkmarks + options) */}
+                                    <div
+                                      className={`flex items-center gap-1.5 mt-1 px-1 ${
+                                        hasReactions ? "pt-1.5" : ""
+                                      } ${isMe ? "justify-end" : "justify-start"}`}
+                                    >
+                                      <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                                        {msg.time}
+                                      </span>
+                                      {isMe && (
+                                        <span className={msg.isRead ? "text-[#0F5B47] font-bold text-[11px]" : "text-zinc-400 text-[11px]"}>
+                                          {msg.isRead ? "✓✓" : "✓"}
+                                        </span>
                                       )}
-
-                                      {/* Message Bubble with Press & Hold (Long Press) / Context Menu */}
-                                      <div
-                                        onTouchStart={() => {
-                                          if (!currentChat.isBlocked) {
-                                            longPressTimerRef.current = setTimeout(() => {
-                                              setActiveReactionPickerMsgId(msg.id);
-                                              setActiveMenuMsgId(null);
-                                            }, 450);
-                                          }
-                                        }}
-                                        onTouchEnd={() => {
-                                          if (longPressTimerRef.current) {
-                                            clearTimeout(longPressTimerRef.current);
-                                            longPressTimerRef.current = null;
-                                          }
-                                        }}
-                                        onTouchMove={() => {
-                                          if (longPressTimerRef.current) {
-                                            clearTimeout(longPressTimerRef.current);
-                                            longPressTimerRef.current = null;
-                                          }
-                                        }}
-                                        onContextMenu={(e) => {
-                                          e.preventDefault();
-                                          if (!currentChat.isBlocked) {
-                                            setActiveReactionPickerMsgId(msg.id);
-                                          }
-                                        }}
-                                        className={`max-w-md px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed shadow-2xs select-none transition-all ${
-                                          isTutor
-                                            ? "bg-[#0F5B47] text-white dark:bg-[#188c6e] rounded-br-xs"
-                                            : "bg-white dark:bg-zinc-850 border border-zinc-200/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-bl-xs"
-                                        }`}
-                                      >
-                                        {msg.content}
-                                      </div>
-
-                                      {/* Reaction Badges Pill */}
-                                      {(() => {
-                                        if (!msg.reactions || msg.reactions.length === 0) return null;
-                                        const grouped: { [emoji: string]: { count: number; hasMine: boolean } } = {};
-                                        msg.reactions.forEach((r) => {
-                                          if (!grouped[r.emoji]) {
-                                            grouped[r.emoji] = { count: 0, hasMine: false };
-                                          }
-                                          grouped[r.emoji].count += 1;
-                                          if (r.userId === myUserId) {
-                                            grouped[r.emoji].hasMine = true;
-                                          }
-                                        });
-
-                                        return (
-                                          <div
-                                            className={`absolute -bottom-2.5 ${
-                                              isTutor ? "right-2" : "left-2"
-                                            } flex items-center gap-1 z-10`}
+                                      {!currentChat.isBlocked && (
+                                        <div className="relative">
+                                          <button
+                                            onClick={() => setActiveMenuMsgId(activeMenuMsgId === msg.id ? null : msg.id)}
+                                            className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 rounded transition-all cursor-pointer inline-flex items-center justify-center"
+                                            title="Options"
                                           >
-                                            {Object.entries(grouped).map(([emo, data]) => (
-                                              <button
-                                                key={emo}
-                                                onClick={() => handleToggleReaction(msg.id, emo)}
-                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-black border shadow-2xs cursor-pointer transition-all hover:scale-105 ${
-                                                  data.hasMine
-                                                    ? "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
-                                                    : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50"
-                                                }`}
-                                                title={data.hasMine ? "You reacted (click to remove)" : "Click to react"}
+                                            <MoreHorizontal className="w-3.5 h-3.5" />
+                                          </button>
+                                          {activeMenuMsgId === msg.id && (
+                                            <>
+                                              <div
+                                                className="fixed inset-0 z-20 cursor-default"
+                                                onClick={() => setActiveMenuMsgId(null)}
+                                              />
+                                              <div
+                                                className={`absolute bottom-full mb-1 ${
+                                                  isMe ? "right-0" : "left-0"
+                                                } w-36 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-30`}
                                               >
-                                                <span>{emo}</span>
-                                                {data.count > 1 && <span className="text-[9px]">{data.count}</span>}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        );
-                                      })()}
+                                                <button
+                                                  onClick={() => {
+                                                    setActiveReactionPickerMsgId(msg.id);
+                                                    setActiveMenuMsgId(null);
+                                                  }}
+                                                  className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
+                                                >
+                                                  <Smile className="w-3.5 h-3.5 text-amber-500" />
+                                                  <span>React</span>
+                                                </button>
+                                                {isMe && isEligible && (
+                                                  <>
+                                                    <button
+                                                      onClick={() => {
+                                                        setEditingMessageId(msg.id);
+                                                        setEditingMessageText(msg.content);
+                                                        setActiveMenuMsgId(null);
+                                                      }}
+                                                      className="w-full px-3 py-1.5 text-left text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                      <Edit3 className="w-3.5 h-3.5 text-[#0F5B47]" />
+                                                      <span>Edit</span>
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        handleDeleteMessage(msg.id);
+                                                        setActiveMenuMsgId(null);
+                                                      }}
+                                                      className="w-full px-3 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center gap-2 cursor-pointer"
+                                                    >
+                                                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                                      <span>Unsend</span>
+                                                    </button>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                )}
 
-                                <div className="flex items-center gap-1 mt-1 px-1 text-[9px] font-bold text-zinc-400">
-                                  <span>{msg.time}</span>
-                                  {isTutor && (
-                                    <span className={msg.isRead ? "text-emerald-500 font-bold" : "text-zinc-400"}>
-                                      {msg.isRead ? "✓✓" : "✓"}
-                                    </span>
+                                  {/* Right: User Initials Circle (matching App orange circle) */}
+                                  {isMe && (
+                                    <ChatAvatar
+                                      name={myUserName}
+                                      className="w-8 h-8 mt-0.5"
+                                      bgClassName="bg-[#F97316] text-white"
+                                      textClassName="text-[11px] font-black text-white"
+                                    />
                                   )}
                                 </div>
-                              </div>
+                              </React.Fragment>
                             );
                           })}
 
-                          {/* Real-time Messenger-style typing bubble */}
+                          {/* Real-time typing bubble */}
                           {isTyping && !currentChat.isBlocked && (
-                            <div className="flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                              <div className={`w-7 h-7 rounded-full ${currentChat.avatarBg || "bg-emerald-600"} text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs mb-1 shrink-0`}>
-                                {currentChat.studentName.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 px-4 py-3 rounded-2xl rounded-bl-xs flex items-center gap-1.5 shadow-xs">
-                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "0ms" }} />
-                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "150ms" }} />
-                                <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-300 animate-bounce" style={{ animationDelay: "300ms" }} />
+                            <div className="flex items-end gap-2.5 animate-in fade-in duration-150">
+                              <ChatAvatar
+                                src={activeAvatarUrl}
+                                name={currentChat.studentName}
+                                className="w-8 h-8"
+                                textClassName="text-[11px] font-black"
+                              />
+                              <div className="bg-[#E5E7EB] dark:bg-zinc-800 px-4 py-3 rounded-2xl rounded-tl-xs flex items-center gap-1.5 shadow-xs">
+                                <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "300ms" }} />
                               </div>
                             </div>
                           )}
@@ -1961,11 +2123,11 @@ export default function TutorDashboardClient() {
                           }
                           handleSendMessage(e);
                         }}
-                        className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-150/60 dark:border-zinc-900 flex gap-2.5 items-center shrink-0"
+                        className="p-3.5 bg-white dark:bg-zinc-950 border-t border-zinc-200/80 dark:border-zinc-900 flex gap-3 shrink-0 items-center"
                       >
                         <input
                           type="text"
-                          placeholder="Write a message..."
+                          placeholder="Type a message..."
                           value={newMessageText}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -1984,17 +2146,15 @@ export default function TutorDashboardClient() {
                               }, 1500);
                             }
                           }}
-                          className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold rounded-2xl outline-hidden focus:border-[#0F5B47] dark:focus:border-[#188c6e] text-zinc-900 dark:text-white"
-                          required
+                          className="flex-1 px-5 py-2.5 bg-[#F9FAFB] dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-sm font-medium rounded-full outline-hidden focus:border-[#0F5B47] text-zinc-900 dark:text-white transition-all shadow-2xs"
                         />
                         <button
                           type="submit"
                           disabled={!newMessageText.trim()}
-                          className="px-6 py-3 bg-[#0F5B47] hover:bg-[#0c4a3a] disabled:opacity-50 text-white text-xs font-extrabold uppercase rounded-2xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
-                          title="Send Message"
+                          className="w-10 h-10 rounded-full bg-[#0F5B47] hover:bg-[#0c4a3a] disabled:opacity-40 text-white flex items-center justify-center shadow-xs cursor-pointer shrink-0 transition-all"
+                          title="Send"
                         >
-                          <Send className="w-3.5 h-3.5 text-white" />
-                          <span>Send</span>
+                          <Send className="w-4 h-4" />
                         </button>
                       </form>
                     )}
@@ -2234,6 +2394,11 @@ export default function TutorDashboardClient() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* --- PANEL 6: PROFILE SETTINGS --- */}
+      {currentTab === "profile" && (
+        <ProfileClient />
       )}
 
       {/* Confirmation Modal for Deleting Conversation */}
