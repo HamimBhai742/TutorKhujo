@@ -9,7 +9,9 @@ import {
   ArrowRight,
   TrendingUp,
   Flame,
-  ChevronRight
+  ChevronRight,
+  CheckCircle2,
+  Zap,
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
@@ -24,12 +26,28 @@ export default function LeaderboardClient() {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+
+    const queryParam =
+      selectedCategory !== "All Categories" ? `?category=${encodeURIComponent(selectedCategory)}` : "";
+
     api
-      .get("/user/tutors")
+      .get(`/user/leaderboard${queryParam}`)
       .then((res) => {
-        if (active && res.data?.data && res.data.data.length > 0) {
+        if (active && res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
           const mapped = res.data.data.map(mapDbTutorToFrontend);
           setRealTutors(mapped);
+        } else if (active) {
+          // If no backend tutors match the category, fallback to tutors endpoint or empty
+          api
+            .get("/user/tutors")
+            .then((resFallback) => {
+              if (active && resFallback.data?.data && resFallback.data.data.length > 0) {
+                const mappedFallback = resFallback.data.data.map(mapDbTutorToFrontend);
+                setRealTutors(mappedFallback);
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch((err) => {
@@ -42,7 +60,7 @@ export default function LeaderboardClient() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCategory]);
 
   const allTutors = useMemo(() => {
     if (realTutors.length > 0) {
@@ -59,8 +77,20 @@ export default function LeaderboardClient() {
         t.subjects.some((s) => s.toLowerCase().includes(selectedCategory.toLowerCase()))
       );
     }
-    // Sort by rating desc, then reviews desc, then verified
+    // Performance ranking sort:
+    // 1. Tutor of the Month first
+    // 2. Performance score (if present)
+    // 3. Rating
+    // 4. Review count
     list.sort((a, b) => {
+      if (b.isTutorOfTheMonth !== a.isTutorOfTheMonth) {
+        return (b.isTutorOfTheMonth ? 1 : 0) - (a.isTutorOfTheMonth ? 1 : 0);
+      }
+      if (typeof b.performanceScore === "number" && typeof a.performanceScore === "number") {
+        if (b.performanceScore !== a.performanceScore) {
+          return b.performanceScore - a.performanceScore;
+        }
+      }
       if (b.rating !== a.rating) return b.rating - a.rating;
       return b.reviewsCount - a.reviewsCount;
     });
@@ -98,7 +128,7 @@ export default function LeaderboardClient() {
             </h1>
 
             <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">
-              Discover our top-ranked verified tutors across Dhaka. Ranked strictly by student feedback, verified subject expertise, lesson completion rates, and responsiveness.
+              Discover our top-ranked verified tutors across Dhaka. Ranked strictly by live student feedback, verified subject expertise, lesson completion rates, and responsiveness.
             </p>
           </div>
 
@@ -129,6 +159,12 @@ export default function LeaderboardClient() {
               <div key={i} className="h-96 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800" />
             ))}
           </div>
+        ) : filteredRankedTutors.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
+            <Trophy className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-zinc-800 dark:text-zinc-200">No tutors found for {selectedCategory}</h3>
+            <p className="text-sm text-zinc-500 mt-1">Try selecting another subject category from above.</p>
+          </div>
         ) : (
           <section className="space-y-6">
             <div className="flex items-center justify-between">
@@ -142,35 +178,48 @@ export default function LeaderboardClient() {
               {/* Rank 2 (Silver) */}
               {topThree[1] && (
                 <ScrollReveal variant="slide-up" delay={150} className="w-full">
-                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                    <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 text-xs font-black border border-zinc-200 dark:border-zinc-800">
+                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between">
+                    <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 text-xs font-black border border-zinc-200 dark:border-zinc-800">
                       🥈 Rank #2
                     </div>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className={`w-14 h-14 rounded-2xl ${topThree[1].avatarBg} text-white text-xl font-extrabold flex items-center justify-center shadow-md`}>
-                        {topThree[1].initials}
+                    <div>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center">
+                          {topThree[1].profilePic ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={topThree[1].profilePic}
+                              alt={topThree[1].name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full ${topThree[1].avatarBg} text-white text-xl font-extrabold flex items-center justify-center`}>
+                              {topThree[1].initials}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-base text-zinc-900 dark:text-white truncate">{topThree[1].name}</h3>
+                          <p className="text-xs text-zinc-500 font-semibold truncate">{topThree[1].university}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-extrabold text-base text-zinc-900 dark:text-white">{topThree[1].name}</h3>
-                        <p className="text-xs text-zinc-500 font-semibold">{topThree[1].university}</p>
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-500 mb-4">
+                        <Star className="w-4 h-4 fill-amber-500" />
+                        <span>{topThree[1].rating.toFixed(1)} Rating</span>
+                        <span className="text-zinc-400">•</span>
+                        <span className="text-zinc-500">{topThree[1].reviewsCount} reviews</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-500 mb-4">
-                      <Star className="w-4 h-4 fill-amber-500" />
-                      <span>{topThree[1].rating.toFixed(1)} Rating</span>
-                      <span className="text-zinc-400">•</span>
-                      <span className="text-zinc-500">{topThree[1].reviewsCount} reviews</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mb-6">
-                      {topThree[1].subjects.slice(0, 3).map((sub, idx) => (
-                        <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
-                          {sub}
-                        </span>
-                      ))}
+                      <div className="flex flex-wrap gap-1.5 mb-6">
+                        {topThree[1].subjects.slice(0, 3).map((sub, idx) => (
+                          <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
+                            {sub}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <Link
                       href={`/tutors/${topThree[1].id}`}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#188c6e] text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-xl transition-all"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#188c6e] text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-xl transition-all cursor-pointer"
                     >
                       <span>View Profile</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -182,35 +231,58 @@ export default function LeaderboardClient() {
               {/* Rank 1 (Gold / Crown - Highlighted Center) */}
               {topThree[0] && (
                 <ScrollReveal variant="slide-up" delay={50} className="w-full md:-translate-y-4">
-                  <div className="bg-linear-to-b from-amber-500/15 via-white to-white dark:from-amber-500/10 dark:via-zinc-950 dark:to-zinc-950 border-2 border-amber-400 dark:border-amber-600/60 rounded-3xl p-7 relative overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all">
+                  <div className="bg-linear-to-b from-amber-500/15 via-white to-white dark:from-amber-500/10 dark:via-zinc-950 dark:to-zinc-950 border-2 border-amber-400 dark:border-amber-600/60 rounded-3xl p-7 relative overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all flex flex-col justify-between">
                     <div className="absolute top-0 right-0 left-0 h-1.5 bg-linear-to-r from-amber-400 via-orange-500 to-amber-400" />
                     <div className="absolute top-4 right-4 flex items-center gap-1 px-3.5 py-1 rounded-full bg-amber-500 text-white text-xs font-black shadow-md uppercase">
                       👑 Rank #1 • Champion
                     </div>
-                    <div className="flex items-center gap-4 mb-5 pt-2">
-                      <div className={`w-18 h-18 rounded-2xl ${topThree[0].avatarBg} text-white text-2xl font-black flex items-center justify-center shadow-lg ring-4 ring-amber-400/40`}>
-                        {topThree[0].initials}
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Tutor of the Month</span>
-                        <h3 className="font-black text-lg text-zinc-900 dark:text-white">{topThree[0].name}</h3>
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold">{topThree[0].university}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm font-black text-amber-500 mb-5 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/50 dark:border-amber-900/40">
-                      <Star className="w-4 h-4 fill-amber-500" />
-                      <span className="text-zinc-900 dark:text-white">{topThree[0].rating.toFixed(1)}</span>
-                      <span className="text-zinc-400">•</span>
-                      <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">100% On-Time Attendance</span>
-                    </div>
-                    <div className="space-y-1.5 mb-6">
-                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Specializations:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {topThree[0].subjects.map((sub, idx) => (
-                          <span key={idx} className="px-3 py-1 rounded-lg text-xs font-extrabold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-300/40">
-                            {sub}
+                    <div>
+                      <div className="flex items-center gap-4 mb-5 pt-2">
+                        <div className="w-18 h-18 rounded-2xl overflow-hidden shadow-lg ring-4 ring-amber-400/40 shrink-0 flex items-center justify-center">
+                          {topThree[0].profilePic ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={topThree[0].profilePic}
+                              alt={topThree[0].name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full ${topThree[0].avatarBg} text-white text-2xl font-black flex items-center justify-center`}>
+                              {topThree[0].initials}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                            {topThree[0].isTutorOfTheMonth ? "Tutor of the Month" : "Top Educator"}
                           </span>
-                        ))}
+                          <h3 className="font-black text-lg text-zinc-900 dark:text-white truncate">{topThree[0].name}</h3>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold truncate">{topThree[0].university}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm font-black text-amber-500 mb-5 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/50 dark:border-amber-900/40">
+                        <Star className="w-4 h-4 fill-amber-500" />
+                        <span className="text-zinc-900 dark:text-white">{topThree[0].rating.toFixed(1)}</span>
+                        <span className="text-zinc-400">•</span>
+                        <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">100% On-Time Attendance</span>
+                        {typeof topThree[0].performanceScore === "number" && (
+                          <>
+                            <span className="text-zinc-400">•</span>
+                            <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <Zap className="w-3 h-3 fill-emerald-500" /> {topThree[0].performanceScore} pts
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="space-y-1.5 mb-6">
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Specializations:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {topThree[0].subjects.map((sub, idx) => (
+                            <span key={idx} className="px-3 py-1 rounded-lg text-xs font-extrabold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-300/40">
+                              {sub}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <Link
@@ -227,35 +299,48 @@ export default function LeaderboardClient() {
               {/* Rank 3 (Bronze) */}
               {topThree[2] && (
                 <ScrollReveal variant="slide-up" delay={250} className="w-full">
-                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+                  <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between">
                     <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 text-xs font-black border border-orange-200 dark:border-orange-900/40">
                       🥉 Rank #3
                     </div>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className={`w-14 h-14 rounded-2xl ${topThree[2].avatarBg} text-white text-xl font-extrabold flex items-center justify-center shadow-md`}>
-                        {topThree[2].initials}
+                    <div>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center">
+                          {topThree[2].profilePic ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={topThree[2].profilePic}
+                              alt={topThree[2].name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full ${topThree[2].avatarBg} text-white text-xl font-extrabold flex items-center justify-center`}>
+                              {topThree[2].initials}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-base text-zinc-900 dark:text-white truncate">{topThree[2].name}</h3>
+                          <p className="text-xs text-zinc-500 font-semibold truncate">{topThree[2].university}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-extrabold text-base text-zinc-900 dark:text-white">{topThree[2].name}</h3>
-                        <p className="text-xs text-zinc-500 font-semibold">{topThree[2].university}</p>
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-500 mb-4">
+                        <Star className="w-4 h-4 fill-amber-500" />
+                        <span>{topThree[2].rating.toFixed(1)} Rating</span>
+                        <span className="text-zinc-400">•</span>
+                        <span className="text-zinc-500">{topThree[2].reviewsCount} reviews</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-500 mb-4">
-                      <Star className="w-4 h-4 fill-amber-500" />
-                      <span>{topThree[2].rating.toFixed(1)} Rating</span>
-                      <span className="text-zinc-400">•</span>
-                      <span className="text-zinc-500">{topThree[2].reviewsCount} reviews</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mb-6">
-                      {topThree[2].subjects.slice(0, 3).map((sub, idx) => (
-                        <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
-                          {sub}
-                        </span>
-                      ))}
+                      <div className="flex flex-wrap gap-1.5 mb-6">
+                        {topThree[2].subjects.slice(0, 3).map((sub, idx) => (
+                          <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
+                            {sub}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <Link
                       href={`/tutors/${topThree[2].id}`}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#188c6e] text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-xl transition-all"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#188c6e] text-zinc-800 dark:text-zinc-200 text-xs font-extrabold rounded-xl transition-all cursor-pointer"
                     >
                       <span>View Profile</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -287,14 +372,28 @@ export default function LeaderboardClient() {
                       <span className="w-8 text-center text-base font-black text-zinc-400 dark:text-zinc-600">
                         #{rankNumber}
                       </span>
-                      <div className={`w-12 h-12 rounded-2xl ${tutor.avatarBg} text-white font-extrabold flex items-center justify-center text-sm shrink-0 shadow-xs`}>
-                        {tutor.initials}
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 shadow-xs flex items-center justify-center">
+                        {tutor.profilePic ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={tutor.profilePic}
+                            alt={tutor.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className={`w-full h-full ${tutor.avatarBg} text-white font-extrabold flex items-center justify-center text-sm`}>
+                            {tutor.initials}
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-extrabold text-sm md:text-base text-zinc-900 dark:text-white truncate">
                             {tutor.name}
                           </h4>
+                          {tutor.isVerified && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 inline-block shrink-0" />
+                          )}
                           <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] text-[10px] font-black border border-teal-100 dark:border-teal-900/40">
                             {tutor.badge}
                           </span>

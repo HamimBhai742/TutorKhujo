@@ -17,11 +17,17 @@ export interface Tutor {
   badge: string;
   gender: "Male" | "Female";
   about?: string;
+  profilePic?: string;
   education?: { degree: string; institution: string }[];
   reviews?: { reviewer: string; date: string; rating: number; comment: string }[];
   classFrequency?: string;
   trialClass?: string;
   responseRate?: string;
+  rank?: number;
+  performanceScore?: number;
+  isTutorOfTheMonth?: boolean;
+  isVerified?: boolean;
+  totalHired?: number;
 }
 
 export const MOCK_TUTORS: Tutor[] = [
@@ -435,7 +441,7 @@ export function mapDbTutorToFrontend(user: any): Tutor {
   }
 
   let badge = "Top Rated";
-  if (user.isTutorOfTheMonth) badge = "Tutor of Month";
+  if (user.isTutorOfTheMonth) badge = "Tutor of the Month";
   else if (user.verificationStatus === "Approved" || user.isVerified) badge = "Verified Expert";
   else if (user.isPriorityListed) badge = "Popular";
 
@@ -450,15 +456,24 @@ export function mapDbTutorToFrontend(user: any): Tutor {
       ? user.curriculums
       : ["Class 6-9", "SSC", "HSC"];
 
+  const profilePicUrl =
+    typeof user.profilePic === "string" &&
+    (user.profilePic.startsWith("http") ||
+      user.profilePic.startsWith("/") ||
+      user.profilePic.startsWith("data:image"))
+      ? user.profilePic
+      : undefined;
+
   return {
     id: user.id,
     name: user.name,
-    avatarBg: user.profilePic || colors[colorIndex],
+    avatarBg: colors[colorIndex],
+    profilePic: profilePicUrl,
     initials,
     university: user.institution || "Dhaka University",
     department: user.department || "Science & Mathematics",
     rating,
-    reviewsCount: reviews.length,
+    reviewsCount: typeof user.reviewsCount === "number" ? user.reviewsCount : reviews.length,
     subjects:
       Array.isArray(user.subjects) && user.subjects.length > 0
         ? user.subjects
@@ -480,5 +495,10 @@ export function mapDbTutorToFrontend(user: any): Tutor {
     classFrequency: "3 Days / Week",
     trialClass: "Free Demo Class Available",
     responseRate: `${user.name} usually responds within 1 hour.`,
+    rank: user.rank,
+    performanceScore: user.performanceScore,
+    isTutorOfTheMonth: !!user.isTutorOfTheMonth,
+    isVerified: !!(user.isVerified || user.verificationStatus === "Approved"),
+    totalHired: user.totalHired,
   };
 }
