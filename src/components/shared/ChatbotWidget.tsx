@@ -247,26 +247,7 @@ export default function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed z-50 bottom-6 right-6 select-none font-sans">
-      {/* 1. Launcher button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center w-14 h-14 bg-[#0F5B47] hover:bg-[#157A60] dark:bg-[#188c6e] dark:hover:bg-[#1f9f7f] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 animate-float cursor-pointer relative group"
-          aria-label="Chat support"
-        >
-          <MessageCircle className="w-6 h-6" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-          </span>
-          {/* Label tooltip */}
-          <div className="absolute right-16 bg-zinc-900 dark:bg-zinc-800 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-md">
-            Need help? Ask AI
-          </div>
-        </button>
-      )}
-
+    <div className="fixed z-50 bottom-6 right-6 select-none font-sans flex flex-col items-end pointer-events-none">
       {/* 2. Chat Window Panel */}
       {isOpen && (
         <div
@@ -274,15 +255,13 @@ export default function ChatbotWidget() {
             transform: `translate(${position.x}px, ${position.y}px)`,
             transition: isDragging ? "none" : "transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
-          className="w-full md:w-96 h-[100vh] md:h-[530px] fixed md:absolute bottom-0 right-0 md:bottom-20 md:right-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 md:rounded-2xl shadow-2xl flex flex-col overflow-hidden max-w-full"
+          className="pointer-events-auto mb-4 w-[calc(100vw-32px)] sm:w-96 h-[500px] max-h-[calc(100vh-120px)] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200"
         >
           {/* Header */}
           <div
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className={`px-4 py-3 bg-gradient-to-r from-[#0F5B47] to-[#1d9777] text-white flex items-center justify-between select-none ${
-              window.innerWidth >= 768 ? "cursor-grab active:cursor-grabbing" : ""
-            }`}
+            className="px-4 py-3 bg-gradient-to-r from-[#0F5B47] to-[#1d9777] text-white flex items-center justify-between select-none cursor-grab active:cursor-grabbing"
           >
             <div className="flex items-center space-x-2.5">
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
@@ -416,6 +395,29 @@ export default function ChatbotWidget() {
           </form>
         </div>
       )}
+
+      {/* Launcher Floating Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="pointer-events-auto flex items-center justify-center w-14 h-14 bg-[#0F5B47] hover:bg-[#157A60] dark:bg-[#188c6e] dark:hover:bg-[#1f9f7f] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 animate-float cursor-pointer relative group"
+        aria-label="Chat support"
+      >
+        {isOpen ? (
+          <X className="w-6 h-6 transition-transform duration-200 rotate-0 hover:rotate-90" />
+        ) : (
+          <>
+            <MessageCircle className="w-6 h-6" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            {/* Label tooltip */}
+            <div className="absolute right-16 bg-zinc-900 dark:bg-zinc-800 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-md">
+              Need help? Ask AI
+            </div>
+          </>
+        )}
+      </button>
     </div>
   );
 }
