@@ -69,7 +69,14 @@ export default function PersonalInfoStep({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const res = await api.post("/user/upload", formData, {
+        const folder =
+          fieldName === "profile"
+            ? "avatars"
+            : fieldName === "cert" || fieldName === "nid" || fieldName === "studentId"
+            ? "verifications"
+            : "general";
+
+        const res = await api.post(`/user/upload?folder=${folder}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         if (res.data?.data?.url) {
