@@ -27,12 +27,16 @@ import {
   Building,
   UserCheck,
   Loader2,
-  User
+  User,
+  Zap,
+  Lock,
+  PhoneCall
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import { MOCK_TUITION_POSTS, TuitionPost } from "@/data/dashboard";
 import { useAuth } from "@/context/AuthContext";
+import BuyPointsModal from "@/components/points/BuyPointsModal";
 import api from "@/lib/api";
 
 const LOCATIONS = [
@@ -51,7 +55,7 @@ const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "English", "Biology", "
 const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "Class 10 (SSC)", "HSC"];
 
 export default function TuitionsClient() {
-  const { user } = useAuth();
+  const { user, refetchUser } = useAuth();
 
   // Main Data State
   const [posts, setPosts] = useState<TuitionPost[]>([]);
@@ -75,6 +79,10 @@ export default function TuitionsClient() {
   const [selectedJob, setSelectedJob] = useState<TuitionPost | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
   const [showApplyModal, setShowApplyModal] = useState<boolean>(false);
+  const [isBuyPointsOpen, setIsBuyPointsOpen] = useState<boolean>(false);
+  const [unlockedTuitionIds, setUnlockedTuitionIds] = useState<string[]>([]);
+  const [unlockedContactsMap, setUnlockedContactsMap] = useState<Record<string, any>>({});
+  const [unlockingPostId, setUnlockingPostId] = useState<string | null>(null);
 
   // Application form state
   const [bidAmount, setBidAmount] = useState<string>("");
@@ -83,7 +91,7 @@ export default function TuitionsClient() {
   const [showSuccessToast, setShowSuccessToast] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch live tuition posts and tutor's applied posts from backend
+  // Fetch live tuition posts, applied posts, and unlocked items
   useEffect(() => {
     const fetchPublicPosts = async () => {
       try {
@@ -113,13 +121,21 @@ export default function TuitionsClient() {
         }));
         setPosts(formatted);
 
-        // Try to fetch tutor's applied jobs
-        try {
-          const appliedRes = await api.get("/tuitions/tutor/my-applied");
-          const appliedApps = appliedRes.data?.data || [];
-          setAppliedJobIds(appliedApps.map((a: any) => a.tuitionPostId));
-        } catch (_) {
-          // Not logged in as tutor or unauthenticated, ignore silently
+        // Try to fetch tutor's applied jobs and wallet unlocks
+        if (user) {
+          try {
+            const [appliedRes, walletRes] = await Promise.all([
+              api.get("/tuitions/tutor/my-applied").catch(() => ({ data: { data: [] } })),
+              api.get("/points/my-wallet").catch(() => ({ data: { data: {} } })),
+            ]);
+            const appliedApps = appliedRes.data?.data || [];
+            setAppliedJobIds(appliedApps.map((a: any) => a.tuitionPostId));
+            if (walletRes.data?.data?.unlockedTuitionIds) {
+              setUnlockedTuitionIds(walletRes.data.data.unlockedTuitionIds);
+            }
+          } catch (_) {
+            // Silently ignore
+          }
         }
       } catch (err) {
         console.error("Failed to load public tuition posts:", err);
@@ -129,7 +145,7 @@ export default function TuitionsClient() {
     };
 
     fetchPublicPosts();
-  }, []);
+  }, [user]);
 
   // Loading state simulation on filter changes
   useEffect(() => {
@@ -259,6 +275,12 @@ export default function TuitionsClient() {
     e.preventDefault();
     if (!selectedJob) return;
 
+    if ((user?.rewardPoints || 0) < 10) {
+      setShowApplyModal(false);
+      setIsBuyPointsOpen(true);
+      return;
+    }
+
     try {
       setIsSubmittingApply(true);
       setErrorMessage(null);
@@ -267,6 +289,10 @@ export default function TuitionsClient() {
         salaryBid: Number(bidAmount) || selectedJob.budget,
         proposal: proposalText.trim(),
       });
+
+      if (refetchUser) {
+        await refetchUser();
+      }
 
       setAppliedJobIds((prev) => [...prev, selectedJob.id]);
       setShowApplyModal(false);
@@ -281,8 +307,48 @@ export default function TuitionsClient() {
         err?.response?.data?.message ||
         "Failed to submit application. Please make sure you are logged in as a tutor.";
       setErrorMessage(msg);
+      if (msg.includes("Insufficient points")) {
+        setShowApplyModal(false);
+        setIsBuyPointsOpen(true);
+      }
     } finally {
       setIsSubmittingApply(false);
+    }
+  };
+
+  const handleUnlockTuitionContact = async (tuitionPostId: string) => {
+    if (!user) {
+      alert("Please log in to your tutor account to unlock student contact details.");
+      return;
+    }
+
+    if ((user.rewardPoints || 0) < 10) {
+      setIsBuyPointsOpen(true);
+      return;
+    }
+
+    try {
+      setUnlockingPostId(tuitionPostId);
+      const res = await api.post("/points/unlock-tuition", { tuitionPostId });
+      if (res.data?.success) {
+        setUnlockedTuitionIds((prev) => [...prev, tuitionPostId]);
+        if (res.data.data?.studentContact) {
+          setUnlockedContactsMap((prev) => ({
+            ...prev,
+            [tuitionPostId]: res.data.data.studentContact,
+          }));
+        }
+        if (refetchUser) {
+          await refetchUser();
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to unlock tuition contact:", err);
+      if (err.response?.data?.message?.includes("Insufficient points")) {
+        setIsBuyPointsOpen(true);
+      }
+    } finally {
+      setUnlockingPostId(null);
     }
   };
 
@@ -858,9 +924,14 @@ export default function TuitionsClient() {
                 <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">
                   Apply for Tuition Position
                 </h3>
-                <span className="text-[10px] font-black text-[#0F5B47] dark:text-[#188c6e] uppercase">
-                  {selectedJob.classLevel} &bull; {selectedJob.location.split(",")[0]}
-                </span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] font-black text-[#0F5B47] dark:text-[#188c6e] uppercase">
+                    {selectedJob.classLevel} &bull; {selectedJob.location.split(",")[0]}
+                  </span>
+                  <span className="text-[9px] font-black text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-955/30 px-2 py-0.5 rounded-full border border-amber-300/40 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5 fill-amber-500" /> Cost: 10 Pts
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setShowApplyModal(false)}
@@ -985,7 +1056,7 @@ export default function TuitionsClient() {
                   ) : (
                     <>
                       <Send className="w-3.5 h-3.5 text-white" />
-                      Submit Application
+                      Submit Application (10 Pts)
                     </>
                   )}
                 </button>
@@ -1004,12 +1075,18 @@ export default function TuitionsClient() {
           <div>
             <p className="text-xs font-black uppercase">Application Submitted!</p>
             <p className="text-[10px] text-teal-150 font-bold mt-0.5">
-              The student/parent has been notified. They will contact you shortly.
+              10 Points have been deducted from your wallet. The student/parent has been notified.
             </p>
           </div>
         </div>
       )}
 
+      {/* Buy Points Top-up Modal */}
+      <BuyPointsModal
+        isOpen={isBuyPointsOpen}
+        onClose={() => setIsBuyPointsOpen(false)}
+        initialRequiredPoints={10}
+      />
     </div>
   );
 }

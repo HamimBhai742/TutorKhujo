@@ -21,12 +21,16 @@ import {
   MessageSquarePlus,
   MessageSquare,
   BadgeCheck,
-  Lock
+  Lock,
+  PhoneCall
 } from "lucide-react";
 import ScrollReveal from "@/components/shared/ScrollReveal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import SendMessageModal from "@/components/tutors/SendMessageModal";
+import BuyPointsModal from "@/components/points/BuyPointsModal";
 import { Tutor, MOCK_TUTORS, mapDbTutorToFrontend } from "@/data/tutors";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
 interface PageProps {
@@ -35,11 +39,17 @@ interface PageProps {
 
 export default function TutorDetailPage({ params }: PageProps) {
   const { id } = use(params);
+  const router = useRouter();
+  const { user, refetchUser } = useAuth();
 
   const [tutor, setTutor] = useState<Tutor | null>(() => {
     return MOCK_TUTORS.find((t) => t.id === id) || null;
   });
   const [loading, setLoading] = useState<boolean>(!tutor);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [unlockedPhone, setUnlockedPhone] = useState<string>("");
+  const [isBuyPointsOpen, setIsBuyPointsOpen] = useState<boolean>(false);
+  const [unlocking, setUnlocking] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
@@ -49,6 +59,10 @@ export default function TutorDetailPage({ params }: PageProps) {
         if (active && res.data?.data) {
           const mapped = mapDbTutorToFrontend(res.data.data);
           setTutor(mapped);
+          if (res.data.data.mobile && (user?.id === res.data.data.id || user?.role === "admin")) {
+            setIsUnlocked(true);
+            setUnlockedPhone(res.data.data.mobile);
+          }
         }
       })
       .catch(() => {
@@ -61,7 +75,25 @@ export default function TutorDetailPage({ params }: PageProps) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, user]);
+
+  // Check if current user has already unlocked this tutor
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    api
+      .get("/points/my-wallet")
+      .then((res) => {
+        if (active && res.data?.data?.unlockedTutorIds?.includes(id)) {
+          setIsUnlocked(true);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [id, user]);
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
@@ -69,6 +101,51 @@ export default function TutorDetailPage({ params }: PageProps) {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [reviewSuccessMsg, setReviewSuccessMsg] = useState("");
+
+  const handleUnlockTutor = async () => {
+    if (!user) {
+      router.push(`/login?redirect=/tutors/${id}`);
+      return;
+    }
+
+    if ((user.rewardPoints || 0) < 10) {
+      setIsBuyPointsOpen(true);
+      return;
+    }
+
+    try {
+      setUnlocking(true);
+      const res = await api.post("/points/unlock-tutor", { tutorId: id });
+      if (res.data?.success) {
+        setIsUnlocked(true);
+        if (res.data.data?.tutorContact?.mobile) {
+          setUnlockedPhone(res.data.data.tutorContact.mobile);
+        }
+        if (refetchUser) {
+          await refetchUser();
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to unlock tutor contact:", err);
+      if (err.response?.data?.message?.includes("Insufficient points")) {
+        setIsBuyPointsOpen(true);
+      }
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const handleMessageClick = () => {
+    if (!user) {
+      router.push(`/login?redirect=/tutors/${id}`);
+      return;
+    }
+    if (!isUnlocked && user.id !== tutor?.id) {
+      handleUnlockTutor();
+      return;
+    }
+    setIsMessageModalOpen(true);
+  };
 
   if (loading) {
     return (
@@ -476,18 +553,56 @@ export default function TutorDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-4 border-t border-zinc-100 dark:border-zinc-900 pt-4 text-xs font-bold">
-                  {/* Phone Masking Display */}
-                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 space-y-1 text-center">
-                    <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider block">
-                      Direct Mobile Number
-                    </span>
-                    <div className="text-sm font-black text-zinc-900 dark:text-white flex items-center justify-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5 text-[#F26A1B]" />
-                      <span>+880 1712-*** ***</span>
+                  {/* Phone Display / Unlock Box */}
+                  <div className={`p-4 rounded-2xl border text-center transition-all ${
+                    isUnlocked
+                      ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800"
+                      : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800"
+                  }`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider block">
+                        Direct Mobile Number
+                      </span>
+                      {isUnlocked ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                          Unlocked ✓
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                          <Zap className="w-2.5 h-2.5 fill-amber-500" /> 10 Pts
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[9px] text-zinc-500 font-semibold block">
-                      🔒 Phone number visible to confirmed students
-                    </span>
+
+                    {isUnlocked ? (
+                      <div className="space-y-2">
+                        <div className="text-base font-black text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-2">
+                          <span>{unlockedPhone || tutor.salary ? (unlockedPhone || "+880 1712-345678") : "+880 1712-345678"}</span>
+                        </div>
+                        <a
+                          href={`tel:${unlockedPhone || "+8801712345678"}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-black text-[#0F5B47] dark:text-[#188c6e] hover:underline"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" /> Call Directly
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <div className="text-sm font-black text-zinc-900 dark:text-white flex items-center justify-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-[#F26A1B]" />
+                          <span>+880 17•• ••••••</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleUnlockTutor}
+                          disabled={unlocking}
+                          className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-white" />
+                          <span>{unlocking ? "Unlocking..." : "Unlock Contact (10 Points)"}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -502,11 +617,11 @@ export default function TutorDetailPage({ params }: PageProps) {
 
                 {/* Message Request Button */}
                 <button
-                  onClick={() => setIsMessageModalOpen(true)}
+                  onClick={handleMessageClick}
                   className="w-full py-3.5 bg-[#0F5B47] hover:bg-[#0c4a39] text-white font-extrabold text-xs rounded-xl shadow-lg shadow-teal-900/20 transition-all cursor-pointer flex items-center justify-center space-x-2"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Send Message Request</span>
+                  <span>{isUnlocked ? "Send Direct Message" : "Unlock & Send Message (10 Pts)"}</span>
                 </button>
 
                 <button
@@ -520,7 +635,7 @@ export default function TutorDetailPage({ params }: PageProps) {
                 <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/40 p-4 rounded-2xl flex gap-3 items-start">
                   <MessageSquare className="w-4 h-4 text-[#0F5B47] dark:text-[#188c6e] shrink-0 mt-0.5" />
                   <p className="text-[11px] font-semibold text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
-                    Send a direct message request to discuss subjects, schedules, and tuition fees. The tutor will be notified instantly.
+                    Once unlocked, you can call this tutor directly and send unlimited direct messages to their inbox.
                   </p>
                 </div>
               </div>
@@ -692,6 +807,13 @@ export default function TutorDetailPage({ params }: PageProps) {
           university: tutor.university,
           subjects: tutor.subjects,
         }}
+      />
+
+      {/* Buy Points Top-up Modal */}
+      <BuyPointsModal
+        isOpen={isBuyPointsOpen}
+        onClose={() => setIsBuyPointsOpen(false)}
+        initialRequiredPoints={10}
       />
     </div>
   );

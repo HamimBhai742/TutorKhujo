@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
 import React, { useState } from "react";
-import { X, Send, Sparkles, CheckCircle, Loader2 } from "lucide-react";
+import { X, Send, Sparkles, CheckCircle, Loader2, Zap } from "lucide-react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import BuyPointsModal from "@/components/points/BuyPointsModal";
 
 interface QuickApplyModalProps {
   isOpen: boolean;
@@ -21,6 +20,7 @@ interface QuickApplyModalProps {
 }
 
 export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: QuickApplyModalProps) {
+  const { user, refetchUser } = useAuth();
   const [salaryBid, setSalaryBid] = useState<number>(job.budget || 5000);
   const [selectedTemplate, setSelectedTemplate] = useState<number>(1);
   const [customProposal, setCustomProposal] = useState<string>(
@@ -29,6 +29,7 @@ export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: Qui
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
+  const [isBuyPointsOpen, setIsBuyPointsOpen] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -58,6 +59,12 @@ export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: Qui
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+
+    if ((user?.rewardPoints || 0) < 10) {
+      setIsBuyPointsOpen(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -66,58 +73,81 @@ export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: Qui
         proposal: customProposal,
       });
 
-      setSuccessMsg("Application submitted successfully!");
+      if (refetchUser) {
+        await refetchUser();
+      }
+
+      setSuccessMsg("Application submitted successfully! (10 Points Deducted)");
       if (onSuccess) onSuccess();
       setTimeout(() => {
         setSuccessMsg("");
         onClose();
       }, 1500);
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || "Failed to submit application. Please try again.");
+      const msg = err.response?.data?.message || "Failed to submit application. Please try again.";
+      setErrorMsg(msg);
+      if (msg.includes("Insufficient points")) {
+        setIsBuyPointsOpen(true);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-6">
-        
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 pb-4">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#F26A1B] bg-orange-50 dark:bg-orange-955/30 px-2.5 py-0.5 rounded-full border border-orange-200/40">
-              2-Click Quick Apply
-            </span>
-            <h3 className="text-lg font-black text-zinc-900 dark:text-white mt-1">
-              Apply for {job.classLevel} - {job.subjects.join(", ")}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {successMsg ? (
-          <div className="py-8 text-center space-y-3">
-            <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
-            <h4 className="text-base font-black text-zinc-900 dark:text-white">
-              {successMsg}
-            </h4>
-            <p className="text-xs font-bold text-zinc-400">
-              The student has been notified. You can track this application in your dashboard.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {errorMsg && (
-              <div className="p-3 bg-red-50 dark:bg-red-955/30 border border-red-200 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl">
-                {errorMsg}
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="relative w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-6">
+          
+          {/* Modal Header */}
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#F26A1B] bg-orange-50 dark:bg-orange-955/30 px-2.5 py-0.5 rounded-full border border-orange-200/40">
+                  2-Click Quick Apply
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-955/30 px-2.5 py-0.5 rounded-full border border-amber-300/40 flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5 fill-amber-500" /> Cost: 10 Pts
+                </span>
               </div>
-            )}
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white mt-1">
+                Apply for {job.classLevel} - {job.subjects.join(", ")}
+              </h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {successMsg ? (
+            <div className="py-8 text-center space-y-3">
+              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
+              <h4 className="text-base font-black text-zinc-900 dark:text-white">
+                {successMsg}
+              </h4>
+              <p className="text-xs font-bold text-zinc-400">
+                The student has been notified. You can track this application in your dashboard.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {errorMsg && (
+                <div className="p-3 bg-red-50 dark:bg-red-955/30 border border-red-200 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl flex items-center justify-between">
+                  <span>{errorMsg}</span>
+                  {errorMsg.includes("Insufficient points") && (
+                    <button
+                      type="button"
+                      onClick={() => setIsBuyPointsOpen(true)}
+                      className="px-2.5 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-black"
+                    >
+                      Top Up Now
+                    </button>
+                  )}
+                </div>
+              )}
 
             {/* Salary Bid Input */}
             <div className="space-y-1.5">
@@ -214,7 +244,14 @@ export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: Qui
           </form>
         )}
 
+        </div>
       </div>
-    </div>
+
+      <BuyPointsModal
+        isOpen={isBuyPointsOpen}
+        onClose={() => setIsBuyPointsOpen(false)}
+        initialRequiredPoints={10}
+      />
+    </>
   );
 }
