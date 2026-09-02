@@ -79,7 +79,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => setIsBuyPointsOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 dark:from-amber-500/20 dark:to-amber-500/20 border border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 text-xs font-black hover:scale-[1.03] transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 dark:from-amber-500/20 dark:to-amber-500/20 border border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 text-xs font-black hover:scale-[1.03] transition-all cursor-pointer shadow-xs"
                   title="Recharge Points Wallet"
                 >
                   <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />

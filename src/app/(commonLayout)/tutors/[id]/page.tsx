@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, use } from "react";
@@ -596,7 +597,7 @@ export default function TutorDetailPage({ params }: PageProps) {
                           type="button"
                           onClick={handleUnlockTutor}
                           disabled={unlocking}
-                          className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="w-full py-2.5 px-3 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           <Zap className="w-3.5 h-3.5 fill-white" />
                           <span>{unlocking ? "Unlocking..." : "Unlock Contact (10 Points)"}</span>
