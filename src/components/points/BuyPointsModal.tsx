@@ -1,20 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   X,
   Zap,
   CheckCircle2,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   CreditCard,
-  PhoneCall,
   Loader2,
-  ChevronRight,
+  FileText,
+  Download,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import InvoiceModal from "@/components/invoice/InvoiceModal";
 
 interface BuyPointsModalProps {
   isOpen: boolean;
@@ -74,6 +76,7 @@ export default function BuyPointsModal({
 }: BuyPointsModalProps) {
   const { user, refetchUser } = useAuth();
 
+  const router = useRouter();
   const [selectedPackage, setSelectedPackage] = useState<number>(199);
   const [paymentMethod, setPaymentMethod] = useState<"bKash" | "Nagad" | "Card">("bKash");
   const [phoneNumber, setPhoneNumber] = useState<string>(user?.mobile || "");
@@ -82,6 +85,8 @@ export default function BuyPointsModal({
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [purchasedPoints, setPurchasedPoints] = useState<number>(0);
   const [newBalance, setNewBalance] = useState<number>(0);
+  const [lastTrxId, setLastTrxId] = useState<string>("");
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -92,13 +97,17 @@ export default function BuyPointsModal({
       setLoading(true);
       setErrorMsg("");
 
+      const generatedTrxId = `TXN-${paymentMethod.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
       const res = await api.post("/points/purchase", {
         packagePrice: currentPkg.price,
         method: paymentMethod,
-        trxId: `TXN-${paymentMethod.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+        trxId: generatedTrxId,
       });
 
       if (res.data?.success) {
+        const actualTrx = res.data.data.transaction?.trxId || generatedTrxId;
+        setLastTrxId(actualTrx);
         setPurchasedPoints(res.data.data.pointsAdded);
         setNewBalance(res.data.data.totalPoints);
         if (refetchUser) {
@@ -123,7 +132,15 @@ export default function BuyPointsModal({
   const handleClose = () => {
     setStep("SELECT");
     setErrorMsg("");
+    setLastTrxId("");
     onClose();
+  };
+
+  const handleGoToSuccessPage = () => {
+    onClose();
+    router.push(
+      `/payment-success?trxId=${lastTrxId}&points=${purchasedPoints}&amount=${currentPkg.price}&method=${paymentMethod}`
+    );
   };
 
   return (
@@ -335,8 +352,8 @@ export default function BuyPointsModal({
           )}
 
           {step === "SUCCESS" && (
-            <div className="py-6 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-[#0F5B47] dark:text-emerald-400 mx-auto flex items-center justify-center shadow-lg">
+            <div className="py-4 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-[#0F5B47] dark:text-emerald-400 mx-auto flex items-center justify-center shadow-lg animate-in zoom-in">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
 
@@ -347,6 +364,11 @@ export default function BuyPointsModal({
                 <p className="text-xs text-zinc-500">
                   <strong>+{purchasedPoints} Points</strong> have been added to your wallet.
                 </p>
+                {lastTrxId && (
+                  <p className="text-[11px] font-mono text-zinc-400 pt-1">
+                    TrxID: <span className="text-zinc-700 dark:text-zinc-300 font-bold">{lastTrxId}</span>
+                  </p>
+                )}
               </div>
 
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-300/40 text-amber-700 dark:text-amber-300 text-sm font-black">
@@ -354,14 +376,34 @@ export default function BuyPointsModal({
                 <span>New Balance: {newBalance} Points</span>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-2 space-y-2.5">
                 <button
                   type="button"
-                  onClick={handleClose}
-                  className="w-full py-3.5 bg-[#0F5B47] hover:bg-[#0c4a39] text-white font-extrabold text-sm rounded-2xl transition-all shadow-md cursor-pointer"
+                  onClick={handleGoToSuccessPage}
+                  className="w-full py-3 bg-gradient-to-r from-[#0F5B47] to-[#16785e] hover:from-[#0d4f3e] hover:to-[#12644e] text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  Continue & Unlock Contacts
+                  <Download className="w-4 h-4" />
+                  <span>Download Official Invoice & View Receipt</span>
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsInvoiceOpen(true)}
+                    className="w-1/2 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-zinc-200 dark:border-zinc-700"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#0F5B47]" />
+                    <span>Quick Preview</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="w-1/2 py-2.5 bg-zinc-900 hover:bg-black dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    <span>Done & Continue</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -375,6 +417,12 @@ export default function BuyPointsModal({
           <span>10 Pts = 1 Contact / Application</span>
         </div>
       </div>
+
+      <InvoiceModal
+        isOpen={isInvoiceOpen}
+        onClose={() => setIsInvoiceOpen(false)}
+        trxId={lastTrxId}
+      />
     </div>
   );
 }

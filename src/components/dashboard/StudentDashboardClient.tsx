@@ -39,13 +39,17 @@ import {
   ArrowLeft,
   Smile,
   MoreHorizontal,
-  MoreVertical
+  MoreVertical,
+  Download,
+  Zap,
 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import api, { SOCKET_URL } from "@/lib/api";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import ProfileClient from "@/components/dashboard/ProfileClient";
+import InvoiceModal from "@/components/invoice/InvoiceModal";
+import BuyPointsModal from "@/components/points/BuyPointsModal";
 import {
   TuitionPost,
   TutorApplication,
@@ -145,6 +149,9 @@ export default function StudentDashboardClient() {
       })
     : undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [selectedInvoiceTrx, setSelectedInvoiceTrx] = useState<string | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
+  const [isBuyPointsOpen, setIsBuyPointsOpen] = useState<boolean>(false);
   const [chats, setChats] = useState<ChatContact[]>([]);
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
@@ -595,12 +602,18 @@ export default function StudentDashboardClient() {
           const rawTx = txRes.value.data?.data || [];
           const formattedInvoices = rawTx.map((t: any) => ({
             id: t.id,
-            billingMonth: new Date(t.date).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+            billingMonth: t.date
+              ? new Date(t.date).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+              : "Recent",
             description: t.description,
-            date: t.date,
-            method: t.method,
+            date: t.date || "Recent",
+            method: t.method || "bKash",
             amount: t.amount,
-            status: t.status,
+            status: t.status || "Paid",
+            trxId: t.trxId || t.reference,
+            invoiceNo: t.invoiceNo,
+            points: t.points,
+            type: t.type,
           }));
           setInvoices(formattedInvoices);
         }
@@ -2470,43 +2483,163 @@ export default function StudentDashboardClient() {
 
       {/* --- PANEL 6: INVOICES --- */}
       {currentTab === "invoices" && (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
-          <h3 className="text-lg font-black text-zinc-900 dark:text-white pb-4 border-b border-zinc-100 dark:border-zinc-900">
-            Payment Receipts
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-900 text-[10px] font-black text-zinc-450 dark:text-zinc-555 uppercase tracking-wider">
-                  <th className="py-3 px-4">Billing Month</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Pay Date</th>
-                  <th className="py-3 px-4">Method</th>
-                  <th className="py-3 px-4">Amount</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="text-xs font-semibold text-zinc-650 dark:text-zinc-350">
-                {invoices.map((inv) => (
-                  <tr key={inv.id} className="border-b border-zinc-100/50 dark:border-zinc-900/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors">
-                    <td className="py-4 px-4 font-bold text-zinc-800 dark:text-white">
-                      {inv.billingMonth}
-                    </td>
-                    <td className="py-4 px-4">{inv.description}</td>
-                    <td className="py-4 px-4">{inv.date}</td>
-                    <td className="py-4 px-4">{inv.method}</td>
-                    <td className="py-4 px-4 font-bold text-zinc-800 dark:text-white">
-                      ৳ {inv.amount.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e] uppercase">
-                        {inv.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="space-y-6">
+          {/* Header & Actions */}
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-xl font-black text-zinc-900 dark:text-white">
+                  Payment Invoices & Receipts
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-medium">
+                Review payment logs, instant point recharges, and download official electronic tax invoices.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBuyPointsOpen(true)}
+              className="px-5 py-2.5 bg-[#0F5B47] hover:bg-[#0c4a39] text-white text-xs font-black rounded-2xl shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span>Buy More Points</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 shadow-xs space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                Total Amount Paid
+              </span>
+              <p className="text-2xl font-black text-[#0F5B47] dark:text-emerald-400">
+                ৳ {invoices.filter((inv) => inv.status === "Paid").reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">Lifetime verified expenditure</p>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 shadow-xs space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                Invoices Generated
+              </span>
+              <p className="text-2xl font-black text-zinc-900 dark:text-white">
+                {invoices.length}
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">Tax receipts on record</p>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 shadow-xs space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                Reward Points Recharges
+              </span>
+              <p className="text-2xl font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <Zap className="w-5 h-5 fill-amber-500 text-amber-500" />
+                <span>{invoices.filter((inv) => inv.type === "Point Purchase" || inv.points).length} Orders</span>
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">Instant credit top-ups</p>
+            </div>
+          </div>
+
+          {/* Invoices List Table */}
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-900">
+              <h4 className="text-sm font-extrabold text-zinc-900 dark:text-white">
+                All Transactions & Invoices
+              </h4>
+              <span className="text-xs text-zinc-400 font-medium">
+                Showing {invoices.length} items
+              </span>
+            </div>
+
+            {invoices.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mx-auto text-zinc-400">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">No payment invoices yet</h4>
+                <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                  When you recharge points or pay for tuition, your official invoices will automatically appear here with full PDF download options.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsBuyPointsOpen(true)}
+                  className="px-4 py-2 bg-[#0F5B47] text-white text-xs font-bold rounded-xl mt-2 cursor-pointer hover:bg-[#0c4a39] transition-all"
+                >
+                  Buy Points Now
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-900 text-[10px] font-black text-zinc-450 dark:text-zinc-555 uppercase tracking-wider bg-zinc-50/50 dark:bg-zinc-900/30">
+                      <th className="py-3 px-4 rounded-l-xl">Invoice / Ref #</th>
+                      <th className="py-3 px-4">Description</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Method</th>
+                      <th className="py-3 px-4">Amount</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right rounded-r-xl">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs font-semibold text-zinc-650 dark:text-zinc-350">
+                    {invoices.map((inv) => (
+                      <tr key={inv.id} className="border-b border-zinc-100/50 dark:border-zinc-900/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors">
+                        <td className="py-4 px-4 font-mono font-bold text-zinc-900 dark:text-white">
+                          {inv.invoiceNo || (inv.trxId ? `INV-${inv.trxId.slice(-8)}` : `INV-${inv.id.slice(0, 8)}`)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {inv.points || inv.type === "Point Purchase" ? (
+                              <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                                <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-[#0F5B47] flex items-center justify-center shrink-0">
+                                <FileText className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                              {inv.description}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                          {inv.date}
+                        </td>
+                        <td className="py-4 px-4 font-bold text-zinc-700 dark:text-zinc-300">
+                          {inv.method}
+                        </td>
+                        <td className="py-4 px-4 font-black text-zinc-900 dark:text-white whitespace-nowrap">
+                          ৳ {inv.amount.toLocaleString()}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 dark:bg-emerald-950/20 text-[#0F5B47] dark:text-[#188c6e] uppercase">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedInvoiceTrx(inv.trxId || inv.id);
+                              setIsInvoiceModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-800 dark:hover:bg-emerald-600 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            title="View and Download Invoice"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Invoice</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3117,6 +3250,44 @@ export default function StudentDashboardClient() {
         variant="danger"
         onConfirm={handleDeleteConversation}
         onClose={() => setShowDeleteConvModal(false)}
+      />
+
+      {/* Invoice Document Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setSelectedInvoiceTrx(null);
+        }}
+        trxId={selectedInvoiceTrx}
+      />
+
+      {/* Buy Points Top-up Modal */}
+      <BuyPointsModal
+        isOpen={isBuyPointsOpen}
+        onClose={() => setIsBuyPointsOpen(false)}
+        onSuccess={() => {
+          api.get("/payments/my-transactions").then((res) => {
+            const raw = res.data?.data || [];
+            setInvoices(
+              raw.map((t: any) => ({
+                id: t.id,
+                billingMonth: t.date
+                  ? new Date(t.date).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+                  : "Recent",
+                description: t.description,
+                date: t.date || "Recent",
+                method: t.method || "bKash",
+                amount: t.amount,
+                status: t.status || "Paid",
+                trxId: t.trxId || t.reference,
+                invoiceNo: t.invoiceNo,
+                points: t.points,
+                type: t.type,
+              }))
+            );
+          });
+        }}
       />
 
     </div>

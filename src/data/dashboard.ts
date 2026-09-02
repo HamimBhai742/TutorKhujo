@@ -273,11 +273,15 @@ export interface TutorApplication {
 export interface Invoice {
   id: string;
   amount: number;
-  status: "Paid" | "Unpaid" | "Overdue";
+  status: "Paid" | "Unpaid" | "Overdue" | "Processing" | "Failed" | string;
   date: string;
   method: string;
   description: string;
   billingMonth: string;
+  trxId?: string;
+  invoiceNo?: string;
+  points?: number;
+  type?: string;
 }
 
 export const MOCK_TUITION_POSTS: TuitionPost[] = [

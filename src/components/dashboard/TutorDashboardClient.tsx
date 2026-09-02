@@ -35,13 +35,16 @@ import {
   FileText,
   Plus,
   Printer,
-  AlertTriangle
+  AlertTriangle,
+  Download,
 } from "lucide-react";
 import { TakaIcon } from "@/components/shared/TakaIcon";
 import ConfirmationModal from "@/components/shared/ConfirmationModal";
 import ShareProfileModal from "@/components/tutors/ShareProfileModal";
 import QuickApplyModal from "@/components/tuitions/QuickApplyModal";
 import InvoiceModal from "@/components/dashboard/InvoiceModal";
+import CorporateInvoiceModal from "@/components/invoice/InvoiceModal";
+import BuyPointsModal from "@/components/points/BuyPointsModal";
 import SalaryCalculatorModal from "@/components/dashboard/SalaryCalculatorModal";
 import ProfileClient from "@/components/dashboard/ProfileClient";
 import {
@@ -136,6 +139,9 @@ export default function TutorDashboardClient() {
   const [isQuickApplyOpen, setIsQuickApplyOpen] = useState<boolean>(false);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState<boolean>(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [selectedCorporateTrx, setSelectedCorporateTrx] = useState<string | null>(null);
+  const [isCorporateInvoiceOpen, setIsCorporateInvoiceOpen] = useState<boolean>(false);
+  const [isBuyPointsOpen, setIsBuyPointsOpen] = useState<boolean>(false);
   const [isSalaryCalcOpen, setIsSalaryCalcOpen] = useState<boolean>(false);
   const [classLogs, setClassLogs] = useState<any[]>([
     { id: "log-1", date: "2026-08-18", durationHours: 1.5, topicsCovered: "Physics Chapter 4 - Gravitation & Circular Motion", status: "Completed" },
@@ -2249,32 +2255,59 @@ export default function TutorDashboardClient() {
       {currentTab === "earnings" && (
         <div className="grid gap-8 lg:grid-cols-12 items-start">
           
-          {/* Left - Earnings Summary */}
+          {/* Left - Earnings & Invoices Summary */}
           <div className="lg:col-span-8 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 shadow-xs space-y-6">
-            <h3 className="text-lg font-black text-zinc-900 dark:text-white pb-4 border-b border-zinc-100 dark:border-zinc-900">
-              Payout History
-            </h3>
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-900">
+              <div>
+                <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+                  Payouts & Invoices History
+                </h3>
+                <p className="text-xs text-zinc-400 font-medium">
+                  Track earnings disbursements and points recharge tax invoices.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBuyPointsOpen(true)}
+                className="px-4 py-2 bg-[#0F5B47] hover:bg-[#0c4a39] text-white text-xs font-black rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>Buy Points</span>
+              </button>
+            </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-100 dark:border-zinc-900 text-[10px] font-black text-zinc-400 dark:text-zinc-555 uppercase tracking-wider">
-                    <th className="py-3 px-4">Description</th>
+                  <tr className="border-b border-zinc-100 dark:border-zinc-900 text-[10px] font-black text-zinc-400 dark:text-zinc-555 uppercase tracking-wider bg-zinc-50/50 dark:bg-zinc-900/30">
+                    <th className="py-3 px-4 rounded-l-xl">Description</th>
                     <th className="py-3 px-4">Date</th>
                     <th className="py-3 px-4">Method</th>
                     <th className="py-3 px-4">Amount</th>
                     <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right rounded-r-xl">Receipt</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs font-semibold text-zinc-650 dark:text-zinc-350">
                   {payouts.map((pay) => (
                     <tr key={pay.id} className="border-b border-zinc-100/50 dark:border-zinc-900/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/20 transition-colors">
                       <td className="py-4 px-4 font-bold text-zinc-800 dark:text-white">
-                        {pay.description}
+                        <div className="flex items-center gap-2">
+                          {(pay as any).type === "Point Purchase" || (pay as any).points ? (
+                            <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                              <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-[#0F5B47] flex items-center justify-center shrink-0">
+                              <FileText className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                          <span>{pay.description}</span>
+                        </div>
                       </td>
-                      <td className="py-4 px-4">{pay.date}</td>
-                      <td className="py-4 px-4">{pay.method}</td>
-                      <td className="py-4 px-4 font-bold text-zinc-800 dark:text-white">
+                      <td className="py-4 px-4 text-zinc-500 whitespace-nowrap">{pay.date}</td>
+                      <td className="py-4 px-4 font-bold">{pay.method}</td>
+                      <td className="py-4 px-4 font-bold text-zinc-800 dark:text-white whitespace-nowrap">
                         ৳ {pay.amount.toLocaleString()}
                       </td>
                       <td className="py-4 px-4">
@@ -2282,8 +2315,29 @@ export default function TutorDashboardClient() {
                           {pay.status}
                         </span>
                       </td>
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCorporateTrx((pay as any).trxId || (pay as any).reference || pay.id);
+                            setIsCorporateInvoiceOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-[#0F5B47] hover:text-white dark:bg-zinc-800 dark:hover:bg-emerald-600 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          title="View & Download Official Invoice"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Invoice</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
+                  {payouts.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-zinc-400">
+                        No transactions recorded yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2410,6 +2464,25 @@ export default function TutorDashboardClient() {
         variant="danger"
         onConfirm={handleDeleteConversation}
         onClose={() => setShowDeleteConvModal(false)}
+      />
+
+      {/* Corporate Tax Invoice Modal */}
+      <CorporateInvoiceModal
+        isOpen={isCorporateInvoiceOpen}
+        onClose={() => {
+          setIsCorporateInvoiceOpen(false);
+          setSelectedCorporateTrx(null);
+        }}
+        trxId={selectedCorporateTrx}
+      />
+
+      {/* Buy Points Top-up Modal */}
+      <BuyPointsModal
+        isOpen={isBuyPointsOpen}
+        onClose={() => setIsBuyPointsOpen(false)}
+        onSuccess={() => {
+          fetchDashboardData();
+        }}
       />
 
     </div>
