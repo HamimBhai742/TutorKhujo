@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import { X, Send, Sparkles, CheckCircle, Loader2, Zap } from "lucide-react";
+import { X, Send, BadgeCheck, CheckCircle, Loader2, Zap } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import BuyPointsModal from "@/components/points/BuyPointsModal";
@@ -172,7 +173,7 @@ export default function QuickApplyModal({ isOpen, onClose, job, onSuccess }: Qui
             {/* Quick Proposal Pitch Selector */}
             <div className="space-y-2">
               <div className="flex items-center space-x-1.5 pl-1">
-                <Sparkles className="w-4 h-4 text-[#F26A1B]" />
+                <BadgeCheck className="w-4 h-4 text-[#F26A1B]" />
                 <label className="text-xs font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                   Smart Proposal Pitch Templates
                 </label>

@@ -9,7 +9,7 @@ import {
   MessageSquare,
   CheckCircle2,
   Loader2,
-  Sparkles,
+  BadgeCheck,
   GraduationCap,
   LogIn,
   AlertCircle
@@ -268,7 +268,7 @@ export default function SendMessageModal({
             {/* Quick Templates */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
+                <BadgeCheck className="w-3 h-3 text-amber-500" />
                 <span>Quick Starter Messages:</span>
               </span>
               <div className="space-y-1.5">

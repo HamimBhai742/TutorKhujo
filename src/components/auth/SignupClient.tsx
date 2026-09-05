@@ -23,7 +23,7 @@ import {
   Mail,
   CheckCircle,
   Clock,
-  Sparkles
+  BadgeCheck
 } from "lucide-react";
 
 type SignupStep = 1 | 2 | 3;
@@ -330,7 +330,7 @@ export default function SignupClient() {
             <div className="max-w-md w-full mx-auto my-auto space-y-8">
               {/* Icon Container */}
               <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-950/30 flex items-center justify-center text-[#0F5B47] dark:text-[#188c6e] shadow-sm">
-                <Sparkles className="w-7 h-7 animate-pulse" />
+                <BadgeCheck className="w-7 h-7 animate-pulse" />
               </div>
 
               {/* Headings */}

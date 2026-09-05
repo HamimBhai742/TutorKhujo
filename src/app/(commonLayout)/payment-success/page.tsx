@@ -16,7 +16,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Loader2,
-  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -134,7 +134,7 @@ function PaymentSuccessContent() {
               <CheckCircle2 className="w-12 h-12 sm:w-14 sm:h-14" />
             </div>
             <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center shadow-md animate-bounce">
-              <Sparkles className="w-4 h-4" />
+              <BadgeCheck className="w-4 h-4" />
             </div>
           </div>
 

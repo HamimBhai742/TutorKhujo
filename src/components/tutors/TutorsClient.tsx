@@ -13,7 +13,7 @@ import {
   Award,
   ArrowRight,
   GraduationCap,
-  Sparkles,
+  BadgeCheck,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -422,7 +422,7 @@ export default function TutorsClient() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#0F5B47]/8 dark:bg-[#188c6e]/12 text-[#0F5B47] dark:text-[#188c6e] border border-[#0F5B47]/15 dark:border-[#188c6e]/20">
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <BadgeCheck className="w-3.5 h-3.5" />
                   Verified Learning
                 </div>
                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">

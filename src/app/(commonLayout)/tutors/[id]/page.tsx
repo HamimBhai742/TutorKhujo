@@ -9,7 +9,6 @@ import {
   BookOpen,
   ArrowRight,
   GraduationCap,
-  Sparkles,
   Check,
   Zap,
   ChevronRight,
@@ -668,7 +667,7 @@ export default function TutorDetailPage({ params }: PageProps) {
         <ScrollReveal variant="slide-up" delay={350}>
           <div className="mt-20 border-t border-zinc-150 dark:border-zinc-900 pt-16">
             <h2 className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white mb-10 tracking-tight flex items-center gap-2.5">
-              <Sparkles className="w-5 h-5 text-[#0F5B47] dark:text-[#188c6e]" />
+              <BadgeCheck className="w-5 h-5 text-[#0F5B47] dark:text-[#188c6e]" />
               Similar Tutors
             </h2>
 

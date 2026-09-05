@@ -20,7 +20,7 @@ import {
   Trash2,
   Pause,
   Play,
-  Sparkles,
+  BadgeCheck,
   AlertTriangle,
   Loader2,
   RefreshCw,
@@ -2658,7 +2658,7 @@ export default function StudentDashboardClient() {
             <div className="flex justify-between items-center pb-4 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#0F5B47]/10 dark:bg-[#188c6e]/10 text-[#0F5B47] dark:text-[#188c6e] flex items-center justify-center">
-                  {isEditing ? <Edit3 className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                  {isEditing ? <Edit3 className="w-5 h-5" /> : <BadgeCheck className="w-5 h-5" />}
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight">

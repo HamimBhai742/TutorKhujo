@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, MapPin, User, Trash2, Video, Sparkles, BookOpen } from "lucide-react";
+import { Clock, MapPin, User, Trash2, Video, BadgeCheck, BookOpen } from "lucide-react";
 
 interface PreferencesStepProps {
   tuitionModes: string[];
@@ -129,7 +129,7 @@ export default function PreferencesStep({
       {/* Subject Specialization Badges */}
       <div className="space-y-3">
         <div className="flex items-center space-x-2 pl-1">
-          <Sparkles className="w-4 h-4 text-[#F26A1B]" />
+          <BadgeCheck className="w-4 h-4 text-[#F26A1B]" />
           <h3 className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">
             Specialization Badges
           </h3>

@@ -13,7 +13,7 @@ import {
   Award,
   ArrowRight,
   GraduationCap,
-  Sparkles,
+  BadgeCheck,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -550,7 +550,7 @@ export default function TuitionsClient() {
         <div className="relative rounded-[2.5rem] overflow-hidden bg-radial from-[#126b53] to-[#0A4234] text-white p-8 md:p-12 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-8 border border-[#178568]">
           <div className="space-y-4 max-w-2xl">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 rounded-full text-[10px] uppercase tracking-wider font-extrabold text-teal-200 border border-white/5">
-              <Sparkles className="w-3 h-3 text-amber-350 fill-amber-350" />
+              <BadgeCheck className="w-3.5 h-3.5 text-amber-350" />
               Tutor Job Openings
             </div>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight uppercase">
@@ -977,7 +977,7 @@ export default function TuitionsClient() {
                     Write short proposal / pitch message
                   </label>
                   <span className="text-[10px] text-[#F26A1B] font-extrabold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Quick Pitch
+                    <BadgeCheck className="w-3 h-3" /> Quick Pitch
                   </span>
                 </div>
 

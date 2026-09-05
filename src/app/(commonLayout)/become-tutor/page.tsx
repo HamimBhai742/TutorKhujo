@@ -8,7 +8,7 @@ import {
   Star,
   Shield,
   Clock,
-  Sparkles,
+  BadgeCheck,
   BookOpen,
   Check
 } from "lucide-react";
@@ -100,7 +100,7 @@ export default function BecomeTutorPage() {
             <div className="lg:col-span-6 space-y-6 md:space-y-8 text-center lg:text-left">
               <ScrollReveal variant="slide-up" delay={50}>
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-teal-50 dark:bg-teal-950/40 text-[#0F5B47] dark:text-[#188c6e] border border-teal-100/50 dark:border-teal-900/40 uppercase tracking-widest leading-none">
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <BadgeCheck className="w-3.5 h-3.5" />
                   Teach with us
                 </span>
               </ScrollReveal>
