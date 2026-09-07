@@ -30,6 +30,7 @@ const CLASS_LEVELS = ["Class 1-5", "Class 6-9", "SSC", "HSC"];
 export default function TutorsClient() {
   const searchParams = useSearchParams();
   const subjectQuery = searchParams.get("subject");
+  const locationQuery = searchParams.get("location");
 
   // Real Tutors from Database
   const [realTutors, setRealTutors] = useState<Tutor[]>([]);
@@ -66,7 +67,9 @@ export default function TutorsClient() {
     return [];
   });
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("Dhaka");
+  const [selectedLocation, setSelectedLocation] = useState<string>(() => {
+    return locationQuery || "Dhaka";
+  });
   const [maxSalary, setMaxSalary] = useState<number>(15000);
   const [teachingMode, setTeachingMode] = useState<"All" | "Home" | "Online" | "Both">("All");
   const [sortBy, setSortBy] = useState<string>("relevance");
@@ -154,7 +157,18 @@ export default function TutorsClient() {
     // Subject Filter
     if (selectedSubjects.length > 0) {
       result = result.filter((tutor) =>
-        tutor.subjects.some((sub) => selectedSubjects.includes(sub))
+        tutor.subjects.some((sub) =>
+          selectedSubjects.some((sel) => {
+            const cleanSub = sub.toLowerCase();
+            const cleanSel = sel.toLowerCase();
+            return (
+              cleanSub.includes(cleanSel) ||
+              cleanSel.includes(cleanSub) ||
+              (cleanSel === "mathematics" && cleanSub.includes("math")) ||
+              (cleanSel.includes("math") && cleanSub.includes("mathematics"))
+            );
+          })
+        )
       );
     }
 
@@ -166,10 +180,17 @@ export default function TutorsClient() {
     }
 
     // Location Filter
-    if (selectedLocation !== "Dhaka") {
-      result = result.filter(
-        (tutor) => tutor.location.toLowerCase() === selectedLocation.toLowerCase()
-      );
+    if (selectedLocation && selectedLocation !== "Dhaka" && selectedLocation !== "All") {
+      const cleanLoc = selectedLocation.toLowerCase().split(",")[0].trim();
+      result = result.filter((tutor) => {
+        const tutorLoc = (tutor.location || "").toLowerCase();
+        const tutorCity = (tutor.city || "").toLowerCase();
+        return (
+          tutorLoc.includes(cleanLoc) ||
+          tutorCity.includes(cleanLoc) ||
+          cleanLoc.includes(tutorLoc)
+        );
+      });
     }
 
     // Salary Filter
@@ -220,6 +241,24 @@ export default function TutorsClient() {
     setCurrentPage(1);
   };
 
+  const availableSubjectsList = useMemo(() => {
+    const list = [...SUBJECTS];
+    selectedSubjects.forEach((sub) => {
+      if (!list.includes(sub)) {
+        list.push(sub);
+      }
+    });
+    return list;
+  }, [selectedSubjects]);
+
+  const availableLocationsList = useMemo(() => {
+    const list = [...LOCATIONS];
+    if (selectedLocation && !list.includes(selectedLocation)) {
+      list.splice(1, 0, selectedLocation);
+    }
+    return list;
+  }, [selectedLocation]);
+
   // Sidebar Filter Form JSX component
   const filterFormContent = () => (
     <div className="space-y-8 select-none">
@@ -246,7 +285,7 @@ export default function TutorsClient() {
           Subjects
         </label>
         <div className="flex flex-col gap-2.5">
-          {SUBJECTS.map((sub) => {
+          {availableSubjectsList.map((sub) => {
             const checked = selectedSubjects.includes(sub);
             return (
               <label
@@ -332,7 +371,7 @@ export default function TutorsClient() {
             }}
             className="w-full pl-4 pr-10 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-semibold text-zinc-850 dark:text-zinc-200 focus:outline-none focus:border-[#0F5B47] dark:focus:border-[#188c6e] appearance-none transition-colors cursor-pointer"
           >
-            {LOCATIONS.map((loc) => (
+            {availableLocationsList.map((loc) => (
               <option key={loc} value={loc}>
                 {loc === "Dhaka" ? "Dhaka (All Area)" : loc}
               </option>

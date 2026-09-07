@@ -33,8 +33,13 @@ import api, { SOCKET_URL } from "@/lib/api";
 function SidebarNavigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [unreadMessages, setUnreadMessages] = React.useState<number>(0);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const currentTab = searchParams.get("tab") || "overview";
 
@@ -117,6 +122,16 @@ function SidebarNavigation() {
         { name: "Settings", href: ROUTES.DASHBOARD.SETTINGS, active: pathname === ROUTES.DASHBOARD.SETTINGS, icon: Settings },
       ];
 
+  if (!mounted || loading) {
+    return (
+      <nav className="flex-1 space-y-2 px-4 py-6">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800/60 animate-pulse" />
+        ))}
+      </nav>
+    );
+  }
+
   return (
     <nav className="flex-1 space-y-1 px-4 py-6">
       {navigation.map((item) => {
@@ -152,8 +167,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 font-sans">
@@ -193,7 +213,7 @@ export default function DashboardLayout({
 
         {/* Sidebar Footer */}
         <div className="border-t border-zinc-100 p-4 dark:border-zinc-800">
-          {user?.role === "tutor" && (
+          {mounted && user?.role === "tutor" && (
             <Link
               href="/tutor-onboarding"
               className="flex items-center justify-center gap-2 rounded-xl bg-[#F26A1B]/10 hover:bg-[#F26A1B]/20 text-[#F26A1B] px-4 py-2.5 text-xs font-bold transition-all mb-3 text-center"
@@ -212,10 +232,10 @@ export default function DashboardLayout({
               </div>
               <div className="overflow-hidden">
                 <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
-                  {user?.name || "Admin User"}
+                  {mounted && user?.name ? user.name : "User"}
                 </p>
                 <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  {user?.email || "admin@basione.com"}
+                  {mounted && user?.email ? user.email : ""}
                 </p>
               </div>
             </div>

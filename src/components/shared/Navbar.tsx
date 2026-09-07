@@ -75,19 +75,21 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-2.5">
-                {/* Points Wallet Badge */}
-                <button
-                  type="button"
-                  onClick={() => setIsBuyPointsOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 dark:from-amber-500/20 dark:to-amber-500/20 border border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 text-xs font-black hover:scale-[1.03] transition-all cursor-pointer shadow-xs"
-                  title="Recharge Points Wallet"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                  <span>{user.rewardPoints ?? 0} Pts</span>
-                  <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center ml-0.5">
-                    <Plus className="w-2.5 h-2.5" />
-                  </span>
-                </button>
+                {/* Points Wallet Badge (Not shown for Admin) */}
+                {user.role !== "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBuyPointsOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 dark:from-amber-500/20 dark:to-amber-500/20 border border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 text-xs font-black hover:scale-[1.03] transition-all cursor-pointer shadow-xs"
+                    title="Recharge Points Wallet"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                    <span>{user.rewardPoints ?? 0} Pts</span>
+                    <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center ml-0.5">
+                      <Plus className="w-2.5 h-2.5" />
+                    </span>
+                  </button>
+                )}
 
                 <div className="relative">
                   <button
@@ -116,22 +118,26 @@ export default function Navbar() {
                             <span className="inline-block text-[8px] font-extrabold uppercase tracking-widest text-[#0F5B47] dark:text-[#188c6e] bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
                               {user.role}
                             </span>
-                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                              <Zap className="w-2.5 h-2.5 fill-amber-500" /> {user.rewardPoints ?? 0} Pts
-                            </span>
+                            {user.role !== "admin" && (
+                              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                <Zap className="w-2.5 h-2.5 fill-amber-500" /> {user.rewardPoints ?? 0} Pts
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            setIsBuyPointsOpen(true);
-                          }}
-                          className="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
-                        >
-                          <span>Buy Points</span>
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                        {user.role !== "admin" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDropdownOpen(false);
+                              setIsBuyPointsOpen(true);
+                            }}
+                            className="w-full text-left flex items-center justify-between px-4 py-2 text-sm font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
+                          >
+                            <span>Buy Points</span>
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {user.role === "tutor" && (
                           <Link
                             href="/tutor-onboarding"

@@ -45,7 +45,11 @@ export default function AdminDashboardClient() {
         ]);
         
         if (!active) return;
-        setStats(statsRes.data.data);
+        setStats((prev: any) => ({
+          ...prev,
+          ...(statsRes.data?.data || {}),
+          totalRevenue: statsRes.data?.data?.totalRevenue ?? prev.totalRevenue ?? 0,
+        }));
         
         const rawVerifications = Array.isArray(verificationsRes.data?.data)
           ? verificationsRes.data.data
@@ -295,7 +299,7 @@ export default function AdminDashboardClient() {
           </div>
           <div className="mt-4">
             <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">
-              ৳ {stats.totalRevenue.toLocaleString()}
+              ৳ {(stats?.totalRevenue ?? 0).toLocaleString()}
             </span>
             <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
               <TrendingUp size={14} />
